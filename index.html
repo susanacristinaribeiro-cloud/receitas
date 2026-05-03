@@ -100,7 +100,7 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
 .notes-add-bar .btn{font-size:12px;padding:5px 12px;}
 
 /* ── Carousel (notas) ───────────────────────────────────────────── */
-.carousel-wrap{position:relative;margin-bottom:10px;background:#000;border-radius:var(--radius);overflow:hidden;}
+.carousel-wrap{position:relative;margin-bottom:10px;background:var(--card);border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);}
 .carousel-img{width:100%;max-height:280px;object-fit:contain;display:block;cursor:zoom-in;}
 .carousel-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.82);border:none;border-radius:50%;width:36px;height:36px;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 6px rgba(0,0,0,.25);color:var(--text);}
 .carousel-nav.prev{left:8px;}.carousel-nav.next{right:8px;}
@@ -217,15 +217,6 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
     <div class="detail-section"><h4>👨‍🍳 Preparação</h4><p id="detailPreparation"></p></div>
     <div id="detailNotesSection" class="detail-section" style="display:none">
       <h4>📝 Notas</h4>
-      <!-- carousel para fotos das notas -->
-      <div id="notesCarousel" style="display:none">
-        <div class="carousel-wrap">
-          <img id="carouselImg" class="carousel-img" src="" alt=""/>
-          <button class="carousel-nav prev" id="carouselPrev" onclick="stepCarousel(-1)">‹</button>
-          <button class="carousel-nav next" id="carouselNext" onclick="stepCarousel(1)">›</button>
-        </div>
-        <div class="carousel-dots" id="carouselDots"></div>
-      </div>
       <div id="detailNotes"></div>
     </div>
   </div>
@@ -565,42 +556,52 @@ function showDetail(id){
   document.getElementById('detailIngredients').textContent=currentRecipe.ingredients||'—';
   document.getElementById('detailPreparation').textContent=currentRecipe.preparation||'—';
   const ns=document.getElementById('detailNotesSection');
-  const {images,html}=buildNotesDetail(currentRecipe.notes);
-  if(images.length||html){
-    ns.style.display='block';
-    // carousel
-    if(images.length){
-      carouselImages=images;carouselIdx=0;
-      document.getElementById('notesCarousel').style.display='block';
-      refreshCarousel();
-    }else{document.getElementById('notesCarousel').style.display='none';}
-    document.getElementById('detailNotes').innerHTML=html;
-  }else ns.style.display='none';
+  const notesHtml=buildNotesHtml(currentRecipe.notes);
+  if(notesHtml){ns.style.display='block';document.getElementById('detailNotes').innerHTML=notesHtml;}
+  else ns.style.display='none';
 }
 
-function buildNotesDetail(notes){
-  if(!notes)return{images:[],html:''};
+// Constrói o HTML das notas respeitando a ordem dos blocos.
+// Imagens são agrupadas num carrossel injectado onde está o PRIMEIRO bloco de imagem.
+function buildNotesHtml(notes){
+  if(!notes)return'';
   let blocks;
   if(Array.isArray(notes))blocks=notes;
   else if(typeof notes==='string'&&notes.trim())blocks=[{type:'text',content:notes}];
-  else return{images:[],html:''};
-  const images=blocks.filter(b=>b.type==='image'&&b.data).map(b=>b.data);
-  const html=blocks.filter(b=>b.type!=='image').map(b=>{
+  else return'';
+  carouselImages=blocks.filter(b=>b.type==='image'&&b.data).map(b=>b.data);
+  carouselIdx=0;
+  let carouselDone=false;
+  return blocks.map(b=>{
     if(b.type==='text')return`<p class="notes-text-block">${escRaw(b.content||'')}</p>`;
+    if(b.type==='image'&&b.data){
+      if(!carouselDone){
+        carouselDone=true;
+        // injector do carrossel na posição correta
+        return`<div class="carousel-wrap" id="notesCarouselWrap">
+          <img id="carouselImg" class="carousel-img" src="${carouselImages[0]}" alt="" onclick="openLightbox(this.src)"/>
+          <button class="carousel-nav prev" id="carouselPrev" onclick="stepCarousel(-1)" style="${carouselImages.length<2?'display:none':''}">‹</button>
+          <button class="carousel-nav next" id="carouselNext" onclick="stepCarousel(1)" style="${carouselImages.length<2?'display:none':''}">›</button>
+        </div>
+        <div class="carousel-dots" id="carouselDots">${carouselImages.map((_,i)=>`<button class="carousel-dot${i===0?' active':''}" onclick="goCarousel(${i})"></button>`).join('')}</div>`;
+      }
+      return'';// bloco de imagem seguinte está no carrossel, não repetir
+    }
     if(b.type==='url'&&b.url)return`<a href="${esc(b.url)}" target="_blank" rel="noopener" class="notes-url-block">🔗 ${esc(b.label||b.url)}</a><br/>`;
     return'';
   }).join('');
-  return{images,html};
 }
 
 // ─── Carousel ─────────────────────────────────────────────────────────────────
 function refreshCarousel(){
-  document.getElementById('carouselImg').src=carouselImages[carouselIdx];
+  const img=document.getElementById('carouselImg');if(!img)return;
+  img.src=carouselImages[carouselIdx];
   const prev=document.getElementById('carouselPrev');
   const next=document.getElementById('carouselNext');
-  prev.style.display=carouselImages.length>1?'flex':'none';
-  next.style.display=carouselImages.length>1?'flex':'none';
-  document.getElementById('carouselDots').innerHTML=carouselImages.map((_,i)=>
+  if(prev)prev.style.display=carouselImages.length>1?'flex':'none';
+  if(next)next.style.display=carouselImages.length>1?'flex':'none';
+  const dots=document.getElementById('carouselDots');
+  if(dots)dots.innerHTML=carouselImages.map((_,i)=>
     `<button class="carousel-dot${i===carouselIdx?' active':''}" onclick="goCarousel(${i})"></button>`).join('');
 }
 function stepCarousel(d){carouselIdx=(carouselIdx+d+carouselImages.length)%carouselImages.length;refreshCarousel();}
