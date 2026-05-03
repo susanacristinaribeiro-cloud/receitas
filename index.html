@@ -37,15 +37,20 @@
   .btn-danger{background:var(--red);color:#fff;}
   .btn-ghost{background:var(--border);color:var(--text);}
 
+  /* Category groups */
+  .cat-section{margin-bottom:28px;}
+  .cat-section-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);padding:6px 2px 10px;border-bottom:1px solid var(--border);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+  .cat-section-title .cat-count{font-size:11px;background:var(--accent-light);color:var(--accent);border-radius:10px;padding:1px 7px;}
+
   /* Recipe cards */
-  .recipes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;}
+  .recipes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}
   .recipe-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;transition:box-shadow .15s,transform .1s;}
   .recipe-card:hover{box-shadow:var(--shadow);transform:translateY(-2px);}
-  .recipe-card .card-photo{width:100%;height:140px;object-fit:cover;display:block;}
-  .recipe-card .card-photo-placeholder{width:100%;height:100px;display:flex;align-items:center;justify-content:center;font-size:44px;background:var(--accent-light);}
-  .recipe-card .card-body{padding:12px 14px;}
-  .recipe-card h3{font-size:14px;font-weight:600;margin-bottom:4px;}
-  .recipe-card .meta{font-size:11px;color:var(--muted);display:flex;gap:6px;flex-wrap:wrap;}
+  .recipe-card .card-photo{width:100%;height:130px;object-fit:cover;display:block;}
+  .recipe-card .card-photo-placeholder{width:100%;height:90px;display:flex;align-items:center;justify-content:center;font-size:40px;background:var(--accent-light);}
+  .recipe-card .card-body{padding:10px 12px;}
+  .recipe-card h3{font-size:13px;font-weight:600;margin-bottom:4px;}
+  .recipe-card .meta{font-size:11px;color:var(--muted);display:flex;gap:5px;flex-wrap:wrap;}
   .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;background:var(--accent-light);color:var(--accent);}
 
   /* Detail */
@@ -60,11 +65,28 @@
   .detail-section p{white-space:pre-wrap;line-height:1.6;font-size:14px;}
 
   /* Photo upload */
-  .photo-upload-area{border:2px dashed var(--border);border-radius:var(--radius);padding:20px;text-align:center;cursor:pointer;transition:all .15s;position:relative;}
+  .photo-upload-area{border:2px dashed var(--border);border-radius:var(--radius);padding:20px;text-align:center;cursor:pointer;transition:all .15s;display:block;}
   .photo-upload-area:hover{border-color:var(--accent);background:var(--accent-light);}
-  .photo-upload-area input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;}
   .photo-preview{width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-top:10px;display:none;}
   .photo-remove{font-size:12px;color:var(--red);cursor:pointer;margin-top:6px;display:none;}
+
+  /* Notes block editor */
+  .notes-block{border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:var(--bg);}
+  .notes-block-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .notes-block-hdr span{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;}
+  .notes-block-hdr button{background:none;border:none;cursor:pointer;font-size:12px;color:var(--red);padding:2px 6px;border-radius:6px;}
+  .notes-block-hdr button:hover{background:#fdeaea;}
+  .notes-block textarea,.notes-block input{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--card);resize:vertical;}
+  .notes-block textarea:focus,.notes-block input:focus{outline:2px solid var(--accent);border-color:transparent;}
+  .notes-block .nb-url-label{font-size:11px;color:var(--muted);margin:6px 0 3px;}
+  .notes-add-bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+  .notes-add-bar button{font-size:12px;padding:6px 12px;}
+
+  /* Notes blocks in detail view */
+  .notes-text-block{white-space:pre-wrap;line-height:1.6;font-size:14px;margin-bottom:10px;}
+  .notes-img-block{max-width:100%;border-radius:8px;margin-bottom:10px;display:block;cursor:pointer;}
+  .notes-url-block{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--accent);text-decoration:none;margin-bottom:8px;background:var(--accent-light);max-width:100%;word-break:break-all;}
+  .notes-url-block:hover{opacity:.8;}
 
   /* Refeições */
   .slot-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;}
@@ -93,6 +115,7 @@
   .modal{background:var(--card);border-radius:16px;width:100%;max-width:540px;max-height:92vh;overflow-y:auto;padding:24px;}
   .modal h2{font-size:18px;margin-bottom:20px;}
   .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
   .form-group{margin-bottom:14px;}
   .form-group label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:5px;}
   .form-group input,.form-group select,.form-group textarea{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);font-family:inherit;resize:vertical;}
@@ -105,11 +128,13 @@
   .test-result{font-size:12px;margin-top:6px;}
   .empty{text-align:center;padding:40px 20px;color:var(--muted);}
   .empty .big{font-size:40px;margin-bottom:10px;}
-
-  /* Category input with tag */
   .cat-input-wrap{display:flex;gap:6px;}
   .cat-input-wrap input{flex:1;}
-  .cat-tag{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;background:var(--accent-light);color:var(--accent);font-size:12px;font-weight:600;}
+
+  /* Lightbox */
+  #lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:500;align-items:center;justify-content:center;cursor:zoom-out;}
+  #lightbox.open{display:flex;}
+  #lightbox img{max-width:95vw;max-height:95vh;border-radius:8px;object-fit:contain;}
 </style>
 </head>
 <body>
@@ -135,7 +160,7 @@
       </select>
       <button class="btn btn-primary" onclick="openRecipeModal()">+ Nova Receita</button>
     </div>
-    <div id="recipesGrid" class="recipes-grid"></div>
+    <div id="recipesContainer"></div>
   </div>
 
   <div id="view-detail" class="recipe-detail">
@@ -144,7 +169,7 @@
       <button class="btn btn-primary" onclick="editCurrent()">✏️ Editar</button>
       <button class="btn btn-danger" onclick="deleteCurrent()">🗑 Apagar</button>
     </div>
-    <img id="detailPhoto" class="detail-photo" style="display:none" src="" alt="foto"/>
+    <img id="detailPhoto" class="detail-photo" style="display:none" src="" alt="foto" onclick="openLightbox(this.src)"/>
     <div class="detail-header">
       <div id="detailEmoji" class="detail-emoji">🍽️</div>
       <div><h2 id="detailName"></h2><div class="detail-meta" id="detailMeta"></div></div>
@@ -152,7 +177,7 @@
     <div class="detail-section"><h4>🧂 Ingredientes</h4><p id="detailIngredients"></p></div>
     <div class="detail-section"><h4>👨‍🍳 Preparação</h4><p id="detailPreparation"></p></div>
     <div id="detailNotesSection" class="detail-section" style="display:none">
-      <h4>📝 Notas</h4><p id="detailNotes"></p>
+      <h4>📝 Notas</h4><div id="detailNotes"></div>
     </div>
   </div>
 </div>
@@ -196,25 +221,36 @@
       </div>
     </div>
 
-    <div class="form-row">
+    <div class="form-row-3">
       <div class="form-group"><label>Tempo</label><input id="fTime" placeholder="30 min"/></div>
       <div class="form-group"><label>Porções</label><input id="fServings" type="number" value="4" min="1"/></div>
+      <div class="form-group"><label>🔥 Calorias (kcal)</label><input id="fCalories" type="number" min="0" placeholder="ex: 450"/></div>
     </div>
 
     <div class="form-group">
-      <label>📷 Foto</label>
-      <div class="photo-upload-area" onclick="triggerPhotoInput()">
-        <input type="file" id="fPhotoInput" accept="image/*" onchange="onPhotoSelected(event)"/>
+      <label>📷 Foto Principal</label>
+      <label class="photo-upload-area" for="fPhotoInput">
         <span id="photoUploadLabel">Clica ou arrasta uma foto aqui</span>
         <img id="photoPreview" class="photo-preview" src="" alt="preview"/>
         <div id="photoRemove" class="photo-remove" onclick="removePhoto(event)">✕ Remover foto</div>
-      </div>
+      </label>
+      <input type="file" id="fPhotoInput" accept="image/*" style="display:none" onchange="onPhotoSelected(event)"/>
       <input type="hidden" id="fPhoto"/>
     </div>
 
     <div class="form-group"><label>Ingredientes</label><textarea id="fIngredients" rows="4" placeholder="500g frango&#10;2 dentes alho&#10;..."></textarea></div>
     <div class="form-group"><label>Preparação</label><textarea id="fPrep" rows="5" placeholder="1. Temperar...&#10;2. ..."></textarea></div>
-    <div class="form-group"><label>Notas</label><textarea id="fNotes" rows="2"></textarea></div>
+
+    <div class="form-group">
+      <label>Notas</label>
+      <div id="notesBlockList"></div>
+      <div class="notes-add-bar">
+        <button type="button" class="btn btn-ghost" onclick="addNotesBlock('text')">+ Texto</button>
+        <button type="button" class="btn btn-ghost" onclick="addNotesBlock('image')">+ Foto</button>
+        <button type="button" class="btn btn-ghost" onclick="addNotesBlock('url')">+ URL</button>
+      </div>
+      <input type="file" id="notesPhotoInput" accept="image/*" style="display:none" onchange="onNotesPhotoSelected(event)"/>
+    </div>
 
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('recipeOverlay')">Cancelar</button>
@@ -277,9 +313,15 @@
   </div>
 </div>
 
+<!-- ═══ LIGHTBOX ═══ -->
+<div id="lightbox" onclick="closeLightbox()">
+  <img id="lightboxImg" src="" alt=""/>
+</div>
+
 <script>
 // ─── State ────────────────────────────────────────────────────────────────────
 let recipes=[], refeicoes={}, categories=[], currentRecipe=null;
+let notesBlocks=[], notesPhotoTargetIdx=-1;
 
 const SLOTS=[
   {key:'peq-almoço',  label:'Pequeno-almoço',icon:'☀️', cls:'sc-peq'},
@@ -360,32 +402,57 @@ function showTab(t){
 }
 
 // ─── Receitas ─────────────────────────────────────────────────────────────────
+function recipeCardHtml(r){
+  return `<div class="recipe-card" onclick="showDetail('${r.id}')">
+    ${r.photo
+      ?`<img class="card-photo" src="${r.photo}" alt="${esc(r.name)}" loading="lazy"/>`
+      :`<div class="card-photo-placeholder">${r.emoji||'🍽️'}</div>`}
+    <div class="card-body">
+      <h3>${esc(r.name)}</h3>
+      <div class="meta">
+        <span>${diffIcon(r.difficulty)}</span>
+        ${r.time?`<span>⏱ ${esc(r.time)}</span>`:''}
+        ${r.servings?`<span>👥 ${r.servings}</span>`:''}
+        ${r.calories?`<span>🔥 ${r.calories} kcal</span>`:''}
+      </div>
+    </div>
+  </div>`;
+}
+
 function renderRecipes(){
   const q=document.getElementById('searchInput').value.toLowerCase();
-  const cat=document.getElementById('filterCat').value;
-  let list=recipes.filter(r=>(!q||r.name.toLowerCase().includes(q)||(r.ingredients||'').toLowerCase().includes(q))&&(!cat||r.category===cat));
-  const grid=document.getElementById('recipesGrid');
-  if(!list.length){grid.innerHTML='<div class="empty"><div class="big">🍽️</div><p>Sem receitas. Adiciona a primeira!</p></div>';return;}
-  grid.innerHTML=list.map(r=>`
-    <div class="recipe-card" onclick="showDetail('${r.id}')">
-      ${r.photo
-        ?`<img class="card-photo" src="${r.photo}" alt="${esc(r.name)}" loading="lazy"/>`
-        :`<div class="card-photo-placeholder">${r.emoji||'🍽️'}</div>`}
-      <div class="card-body">
-        <h3>${r.photo?'':''} ${esc(r.name)}</h3>
-        <div class="meta">
-          <span class="badge">${esc(r.category||'Outro')}</span>
-          ${r.time?`<span>⏱ ${esc(r.time)}</span>`:''}
-          ${r.servings?`<span>👥 ${r.servings}</span>`:''}
-          <span>${diffIcon(r.difficulty)}</span>
-        </div>
+  const catFilter=document.getElementById('filterCat').value;
+  let list=recipes.filter(r=>
+    (!q||r.name.toLowerCase().includes(q)||(r.ingredients||'').toLowerCase().includes(q))&&
+    (!catFilter||r.category===catFilter)
+  );
+  const container=document.getElementById('recipesContainer');
+  if(!list.length){
+    container.innerHTML='<div class="empty"><div class="big">🍽️</div><p>Sem receitas. Adiciona a primeira!</p></div>';
+    return;
+  }
+  // agrupar por categoria
+  const grouped={};
+  list.forEach(r=>{
+    const cat=r.category||'Outro';
+    if(!grouped[cat])grouped[cat]=[];
+    grouped[cat].push(r);
+  });
+  const sortedCats=Object.keys(grouped).sort((a,b)=>a.localeCompare(b,'pt'));
+  container.innerHTML=sortedCats.map(cat=>`
+    <div class="cat-section">
+      <div class="cat-section-title">
+        ${esc(cat)}
+        <span class="cat-count">${grouped[cat].length}</span>
       </div>
+      <div class="recipes-grid">${grouped[cat].map(recipeCardHtml).join('')}</div>
     </div>`).join('');
 }
 
 function diffIcon(d){return{fácil:'🟢',médio:'🟡',difícil:'🔴'}[d]||'';}
-function esc(s=''){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function esc(s=''){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
+// ─── Detail ───────────────────────────────────────────────────────────────────
 function showDetail(id){
   currentRecipe=recipes.find(r=>r.id===id);if(!currentRecipe)return;
   document.getElementById('view-list').style.display='none';
@@ -393,37 +460,49 @@ function showDetail(id){
   const dp=document.getElementById('detailPhoto');
   if(currentRecipe.photo){dp.src=currentRecipe.photo;dp.style.display='block';}
   else dp.style.display='none';
-  document.getElementById('detailEmoji').textContent=currentRecipe.photo?'':currentRecipe.emoji||'🍽️';
+  document.getElementById('detailEmoji').textContent=currentRecipe.emoji||'🍽️';
   document.getElementById('detailEmoji').style.display=currentRecipe.photo?'none':'block';
   document.getElementById('detailName').textContent=currentRecipe.name;
   document.getElementById('detailMeta').innerHTML=`
-    <span class="badge">${esc(currentRecipe.category)}</span>
+    <span class="badge">${esc(currentRecipe.category||'Outro')}</span>
     ${currentRecipe.time?`<span class="badge" style="background:#edf7ed;color:#4caf6e">⏱ ${esc(currentRecipe.time)}</span>`:''}
     ${currentRecipe.servings?`<span class="badge" style="background:#e8f0fe;color:#3b6fe0">👥 ${currentRecipe.servings} porções</span>`:''}
-    <span class="badge" style="background:#fafafa">${diffIcon(currentRecipe.difficulty)} ${esc(currentRecipe.difficulty)}</span>`;
+    ${currentRecipe.calories?`<span class="badge" style="background:#fff3e0;color:#e65100">🔥 ${currentRecipe.calories} kcal</span>`:''}
+    <span class="badge" style="background:#fafafa">${diffIcon(currentRecipe.difficulty)} ${esc(currentRecipe.difficulty||'')}</span>`;
   document.getElementById('detailIngredients').textContent=currentRecipe.ingredients||'—';
   document.getElementById('detailPreparation').textContent=currentRecipe.preparation||'—';
   const ns=document.getElementById('detailNotesSection');
-  if(currentRecipe.notes){ns.style.display='block';document.getElementById('detailNotes').textContent=currentRecipe.notes;}
+  const notesHtml=renderNotesBlocksHtml(currentRecipe.notes);
+  if(notesHtml){ns.style.display='block';document.getElementById('detailNotes').innerHTML=notesHtml;}
   else ns.style.display='none';
+}
+
+function renderNotesBlocksHtml(notes){
+  if(!notes)return'';
+  let blocks;
+  if(Array.isArray(notes))blocks=notes;
+  else if(typeof notes==='string'&&notes.trim())blocks=[{type:'text',content:notes}];
+  else return'';
+  if(!blocks.length)return'';
+  return blocks.map(b=>{
+    if(b.type==='text')return`<p class="notes-text-block">${esc(b.content||'')}</p>`;
+    if(b.type==='image'&&b.data)return`<img src="${b.data}" class="notes-img-block" onclick="openLightbox(this.src)" alt="nota"/>`;
+    if(b.type==='url'&&b.url)return`<a href="${esc(b.url)}" target="_blank" rel="noopener" class="notes-url-block">🔗 ${esc(b.label||b.url)}</a><br/>`;
+    return'';
+  }).join('');
 }
 
 function showList(){document.getElementById('view-list').style.display='';document.getElementById('view-detail').classList.remove('active');currentRecipe=null;}
 function editCurrent(){if(currentRecipe)openRecipeModal(currentRecipe);}
 
-// ─── Photo upload ─────────────────────────────────────────────────────────────
-function triggerPhotoInput(){document.getElementById('fPhotoInput').click();}
-
+// ─── Photo upload (foto principal) ───────────────────────────────────────────
 function onPhotoSelected(e){
   const file=e.target.files[0];if(!file)return;
   const reader=new FileReader();
   reader.onload=ev=>{
-    const data=ev.target.result;
-    // compress to max 800px
     const img=new Image();
     img.onload=()=>{
-      const MAX=800;
-      let w=img.width,h=img.height;
+      const MAX=800;let w=img.width,h=img.height;
       if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
       const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
       canvas.getContext('2d').drawImage(img,0,0,w,h);
@@ -434,18 +513,92 @@ function onPhotoSelected(e){
       document.getElementById('photoRemove').style.display='block';
       document.getElementById('photoUploadLabel').textContent='Foto seleccionada ✓';
     };
-    img.src=data;
+    img.src=ev.target.result;
   };
   reader.readAsDataURL(file);
 }
 
 function removePhoto(e){
-  e.stopPropagation();
+  e.preventDefault();e.stopPropagation();
   document.getElementById('fPhoto').value='';
   document.getElementById('fPhotoInput').value='';
   document.getElementById('photoPreview').style.display='none';
   document.getElementById('photoRemove').style.display='none';
   document.getElementById('photoUploadLabel').textContent='Clica ou arrasta uma foto aqui';
+}
+
+// ─── Notes block editor ───────────────────────────────────────────────────────
+function renderNotesEditor(){
+  const list=document.getElementById('notesBlockList');
+  list.innerHTML=notesBlocks.map((b,i)=>{
+    if(b.type==='text')return`
+      <div class="notes-block">
+        <div class="notes-block-hdr"><span>📝 Texto</span><button type="button" onclick="removeNotesBlock(${i})">✕ Remover</button></div>
+        <textarea rows="3" oninput="notesBlocks[${i}].content=this.value">${escRaw(b.content||'')}</textarea>
+      </div>`;
+    if(b.type==='image')return`
+      <div class="notes-block">
+        <div class="notes-block-hdr"><span>📷 Foto</span><button type="button" onclick="removeNotesBlock(${i})">✕ Remover</button></div>
+        ${b.data
+          ?`<img src="${b.data}" style="max-width:100%;border-radius:8px;margin-bottom:6px;cursor:pointer" onclick="pickNotesPhoto(${i})" title="Clica para trocar"/>
+            <div style="font-size:11px;color:var(--muted)">Clica na foto para trocar</div>`
+          :`<label class="photo-upload-area" style="padding:14px" onclick="pickNotesPhoto(${i});return false;">Clica para adicionar foto</label>`}
+      </div>`;
+    if(b.type==='url')return`
+      <div class="notes-block">
+        <div class="notes-block-hdr"><span>🔗 URL</span><button type="button" onclick="removeNotesBlock(${i})">✕ Remover</button></div>
+        <input type="url" placeholder="https://..." value="${esc(b.url||'')}" oninput="notesBlocks[${i}].url=this.value" style="margin-bottom:6px"/>
+        <div class="nb-url-label">Texto do link (opcional)</div>
+        <input type="text" placeholder="ex: Receita original" value="${esc(b.label||'')}" oninput="notesBlocks[${i}].label=this.value"/>
+      </div>`;
+    return'';
+  }).join('');
+}
+
+function escRaw(s){return String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function addNotesBlock(type){
+  if(type==='text')notesBlocks.push({type:'text',content:''});
+  else if(type==='image')notesBlocks.push({type:'image',data:null});
+  else if(type==='url')notesBlocks.push({type:'url',url:'',label:''});
+  renderNotesEditor();
+}
+
+function removeNotesBlock(i){
+  notesBlocks.splice(i,1);
+  renderNotesEditor();
+}
+
+function pickNotesPhoto(i){
+  notesPhotoTargetIdx=i;
+  document.getElementById('notesPhotoInput').value='';
+  document.getElementById('notesPhotoInput').click();
+}
+
+function onNotesPhotoSelected(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      const MAX=800;let w=img.width,h=img.height;
+      if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
+      const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      notesBlocks[notesPhotoTargetIdx].data=canvas.toDataURL('image/jpeg',0.75);
+      renderNotesEditor();
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function loadNotesIntoEditor(notes){
+  if(!notes)notesBlocks=[];
+  else if(Array.isArray(notes))notesBlocks=JSON.parse(JSON.stringify(notes));
+  else if(typeof notes==='string'&&notes.trim())notesBlocks=[{type:'text',content:notes}];
+  else notesBlocks=[];
+  renderNotesEditor();
 }
 
 // ─── Recipe modal ─────────────────────────────────────────────────────────────
@@ -455,13 +608,13 @@ function openRecipeModal(r=null){
   document.getElementById('fEmoji').value=r?r.emoji:'🍽️';
   document.getElementById('fName').value=r?r.name:'';
   document.getElementById('fCat').value=r?(r.category||''):'';
-  document.getElementById('fDiff').value=r?r.difficulty:'médio';
+  document.getElementById('fDiff').value=r?(r.difficulty||'médio'):'médio';
   document.getElementById('fTime').value=r?(r.time||''):'';
   document.getElementById('fServings').value=r?(r.servings||4):4;
+  document.getElementById('fCalories').value=r?(r.calories||''):'';
   document.getElementById('fIngredients').value=r?(r.ingredients||''):'';
   document.getElementById('fPrep').value=r?(r.preparation||''):'';
-  document.getElementById('fNotes').value=r?(r.notes||''):'';
-  // photo
+  // foto principal
   document.getElementById('fPhoto').value=r?(r.photo||''):'';
   document.getElementById('fPhotoInput').value='';
   if(r&&r.photo){
@@ -469,11 +622,13 @@ function openRecipeModal(r=null){
     document.getElementById('photoPreview').style.display='block';
     document.getElementById('photoRemove').style.display='block';
     document.getElementById('photoUploadLabel').textContent='Foto seleccionada ✓';
-  } else {
+  }else{
     document.getElementById('photoPreview').style.display='none';
     document.getElementById('photoRemove').style.display='none';
     document.getElementById('photoUploadLabel').textContent='Clica ou arrasta uma foto aqui';
   }
+  // notas em blocos
+  loadNotesIntoEditor(r?r.notes:null);
   populateCatDatalist();
   openModal('recipeOverlay');
 }
@@ -483,19 +638,27 @@ async function saveRecipe(){
   if(!name){alert('O nome é obrigatório.');return;}
   const cat=document.getElementById('fCat').value.trim()||'Outro';
   const photo=document.getElementById('fPhoto').value||null;
-  const body={name,emoji:document.getElementById('fEmoji').value.trim()||'🍽️',category:cat,
-    difficulty:document.getElementById('fDiff').value,time:document.getElementById('fTime').value.trim(),
+  const calVal=document.getElementById('fCalories').value;
+  const calories=calVal?parseInt(calVal):null;
+  // Recolhe estado actual das textareas das notas (oninput pode não ter disparado em todos)
+  document.querySelectorAll('#notesBlockList .notes-block').forEach((el,i)=>{
+    const ta=el.querySelector('textarea');if(ta&&notesBlocks[i])notesBlocks[i].content=ta.value;
+  });
+  const notes=notesBlocks.length>0?notesBlocks:null;
+  const body={
+    name,emoji:document.getElementById('fEmoji').value.trim()||'🍽️',
+    category:cat,difficulty:document.getElementById('fDiff').value,
+    time:document.getElementById('fTime').value.trim(),
     servings:parseInt(document.getElementById('fServings').value)||4,
-    ingredients:document.getElementById('fIngredients').value.trim(),
+    calories,ingredients:document.getElementById('fIngredients').value.trim(),
     preparation:document.getElementById('fPrep').value.trim(),
-    notes:document.getElementById('fNotes').value.trim(),photo};
+    notes,photo
+  };
   const id=document.getElementById('editId').value;
-  // auto-add category locally
   if(cat&&!categories.includes(cat))categories.push(cat);
   try{
     if(id){const u=await apiFetch(`/recipes/${id}`,{method:'PUT',body:JSON.stringify(body)});const i=recipes.findIndex(r=>r.id===id);if(i>=0)recipes[i]=u;currentRecipe=u;}
     else{const c=await apiFetch('/recipes',{method:'POST',body:JSON.stringify(body)});recipes.push(c);}
-    // sync categories from BE
     try{categories=await apiFetch('/categories');}catch{}
   }catch{
     if(id){const i=recipes.findIndex(r=>r.id===id);if(i>=0){recipes[i]={...recipes[i],...body};currentRecipe=recipes[i];}}
@@ -519,7 +682,7 @@ function renderSlots(){
   const grid=document.getElementById('slotGrid');
   grid.innerHTML=SLOTS.map(s=>{
     const entries=refeicoes[s.key]||[];
-    return `<div class="slot-card ${s.cls}">
+    return`<div class="slot-card ${s.cls}">
       <div class="slot-header">
         <span class="slot-icon">${s.icon}</span>
         <h3>${s.label}</h3>
@@ -633,6 +796,13 @@ function saveSettings(){
   localStorage.setItem('api_key',document.getElementById('sKey').value.trim());
   closeModal('settingsOverlay');loadAll();
 }
+
+// ─── Lightbox ─────────────────────────────────────────────────────────────────
+function openLightbox(src){
+  document.getElementById('lightboxImg').src=src;
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox(){document.getElementById('lightbox').classList.remove('open');}
 
 // ─── Modal helpers ─────────────────────────────────────────────────────────────
 function openModal(id){document.getElementById(id).classList.add('open');}
