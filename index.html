@@ -206,8 +206,9 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
   <div id="view-detail" class="recipe-detail">
     <div class="toolbar">
       <button class="btn btn-ghost" onclick="showList()">← Voltar</button>
-      <button class="btn btn-teal" onclick="editCurrent()">✏️ Editar</button>
       <button class="btn btn-ghost" onclick="exportRecipePDF(currentRecipe,this)">📄 PDF</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-teal" onclick="editCurrent()">✏️ Editar</button>
       <button class="btn btn-danger" onclick="deleteCurrent()">🗑 Apagar</button>
     </div>
     <img id="detailPhoto" class="detail-photo" style="display:none" src="" alt="foto" onclick="openLightbox(this.src)"/>
@@ -766,7 +767,7 @@ async function saveRecipe(){
 
 async function deleteCurrent(){
   if(!currentRecipe)return;
-  if(!confirm(`Apagar "${currentRecipe.name}"?`))return;
+  if(!confirm(`Tens a certeza que queres apagar "${currentRecipe.name}"?\nEsta ação não pode ser desfeita.`))return;
   try{await apiFetch(`/recipes/${currentRecipe.id}`,{method:'DELETE'});}catch{}
   recipes=recipes.filter(r=>r.id!==currentRecipe.id);
   saveLocal();showList();render();
@@ -976,18 +977,30 @@ function needY(doc,y,need,name){
   return(y+need>275)?pdContinuationPage(doc,name):y;
 }
 
+/* ── detect image format from data URL ── */
+function imgFmt(dataUrl){
+  if(!dataUrl)return'JPEG';
+  if(dataUrl.startsWith('data:image/png'))return'PNG';
+  if(dataUrl.startsWith('data:image/webp'))return'WEBP';
+  return'JPEG';
+}
+/* ── strip emoji from string (PDF fonts don't support emoji) ── */
+function stripEmoji(s){
+  return(s||'').replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27FF}\u{FE00}-\u{FEFF}]/gu,'').trim();
+}
+
 /* ── single recipe layout (draws on current page) ── */
 async function pdDrawRecipe(doc,recipe){
   const pw=210,ph=297,m=15;let y=m;
   doc.setFillColor(...PC.cream);doc.rect(0,0,pw,ph,'F');
   // photo or botanical top
   if(recipe.photo){
-    try{doc.addImage(recipe.photo,'JPEG',m,y,pw-m*2,68,'','MEDIUM');y+=71;}
+    try{doc.addImage(recipe.photo,imgFmt(recipe.photo),m,y,pw-m*2,68,'','MEDIUM');y+=71;}
     catch(e){pdBorderStrip(doc,y+6,pw);y+=13;}
   }else{pdBorderStrip(doc,y+6,pw);y+=13;}
-  // name
+  // name (emoji stripped — PDF fonts don't support them)
   doc.setFont('helvetica','bold');doc.setFontSize(21);doc.setTextColor(...PC.teal);
-  const nm=doc.splitTextToSize((recipe.emoji||'')+' '+recipe.name,pw-m*2);
+  const nm=doc.splitTextToSize(stripEmoji(recipe.name),pw-m*2);
   doc.text(nm,m,y);y+=nm.length*9.5+3;
   // badges
   doc.setFontSize(8.5);let bx=m;
@@ -1036,7 +1049,7 @@ async function pdDrawRecipe(doc,recipe){
           doc.text(ul,m,y);doc.link(m,y-4,doc.getTextWidth(ul),5,{url:b.url});y+=7;
         }else if(b.type==='image'&&b.data){
           y=needY(doc,y,58,recipe.name);
-          try{doc.addImage(b.data,'JPEG',m,y,pw-m*2,56,'','MEDIUM');y+=59;}
+          try{doc.addImage(b.data,imgFmt(b.data),m,y,pw-m*2,56,'','MEDIUM');y+=59;}
           catch(e){}
         }
       }
