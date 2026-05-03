@@ -299,13 +299,17 @@ const hdrs=(x={})=>{const h={'Content-Type':'application/json',...x};if(getApiKe
 function setStatus(s){const d=document.getElementById('statusDot');d.className='status-dot'+(s!=='green'?' '+s:'');}
 
 // ─── API ──────────────────────────────────────────────────────────────────────
-async function apiFetch(path,opts={}){
+async function apiFetch(path,opts={},timeoutMs=30000){
   const base=getApiUrl();if(!base)throw new Error('Sem URL');
   setStatus('orange');
-  const res=await fetch(base.replace(/\/$/,'')+path,{...opts,headers:hdrs(opts.headers||{})});
-  if(!res.ok)throw new Error(`HTTP ${res.status}`);
-  setStatus('green');
-  return res.status===204?null:res.json();
+  const ctrl=new AbortController();
+  const tid=setTimeout(()=>ctrl.abort(),timeoutMs);
+  try{
+    const res=await fetch(base.replace(/\/$/,'')+path,{...opts,headers:hdrs(opts.headers||{}),signal:ctrl.signal});
+    if(!res.ok)throw new Error(`HTTP ${res.status}`);
+    setStatus('green');
+    return res.status===204?null:res.json();
+  }finally{clearTimeout(tid);}
 }
 
 // ─── Load ─────────────────────────────────────────────────────────────────────
