@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>🍽️ Receitas</title>
+<style>
+  :root {
+    --bg: #fafaf8;
+    --card: #ffffff;
+    --border: #e8e4de;
+    --text: #2d2926;
+    --muted: #8a857e;
+    --accent: #c97d4e;
+    --accent-light: #f5ede4;
+    --green: #4caf6e;
+    --red: #e05252;
+    --orange: #f0a030;
+    --radius: 12px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 15px; }
+
+  /* ── Header ── */
+  header { background: var(--card); border-bottom: 1px solid var(--border); padding: 0 20px; display: flex; align-items: center; gap: 12px; height: 56px; position: sticky; top: 0; z-index: 100; }
+  header h1 { font-size: 18px; font-weight: 700; flex: 1; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green); transition: background .3s; }
+  .status-dot.red { background: var(--red); }
+  .status-dot.orange { background: var(--orange); }
+  .btn-icon { background: none; border: none; cursor: pointer; font-size: 20px; padding: 6px; border-radius: 8px; transition: background .15s; }
+  .btn-icon:hover { background: var(--accent-light); }
+
+  /* ── Tabs ── */
+  .tabs { display: flex; background: var(--card); border-bottom: 1px solid var(--border); padding: 0 20px; }
+  .tab { padding: 12px 18px; cursor: pointer; border-bottom: 2px solid transparent; font-weight: 500; color: var(--muted); transition: all .15s; white-space: nowrap; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── Layout ── */
+  .page { display: none; padding: 20px; max-width: 900px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* ── Toolbar ── */
+  .toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .search-box { flex: 1; min-width: 180px; padding: 9px 14px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; background: var(--card); }
+  .search-box:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  select.filter { padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; background: var(--card); cursor: pointer; }
+  .btn { padding: 9px 16px; border: none; border-radius: var(--radius); cursor: pointer; font-size: 14px; font-weight: 600; transition: opacity .15s; }
+  .btn:hover { opacity: .85; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-ghost { background: var(--border); color: var(--text); }
+
+  /* ── Recipe Grid ── */
+  .recipes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+  .recipe-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; cursor: pointer; transition: box-shadow .15s, transform .1s; }
+  .recipe-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
+  .recipe-card .emoji { font-size: 32px; margin-bottom: 8px; }
+  .recipe-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .recipe-card .meta { font-size: 12px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; background: var(--accent-light); color: var(--accent); }
+
+  /* ── Modal ── */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 200; align-items: center; justify-content: center; padding: 16px; }
+  .overlay.open { display: flex; }
+  .modal { background: var(--card); border-radius: 16px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; padding: 24px; }
+  .modal h2 { font-size: 18px; margin-bottom: 20px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 5px; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; padding: 9px 12px; border: 1px solid var(--border);
+    border-radius: 8px; font-size: 14px; background: var(--bg);
+    font-family: inherit; resize: vertical;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+  /* ── Detail View ── */
+  .recipe-detail { display: none; }
+  .recipe-detail.active { display: block; }
+  .detail-header { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
+  .detail-emoji { font-size: 52px; }
+  .detail-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  .detail-section { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
+  .detail-section h4 { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; }
+  .detail-section p { white-space: pre-wrap; line-height: 1.6; font-size: 14px; }
+
+  /* ── Plano de Refeições ── */
+  .week-nav { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .week-nav h2 { flex: 1; text-align: center; font-size: 16px; }
+  .day-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
+  @media (max-width: 700px) { .day-grid { grid-template-columns: 1fr 1fr; } }
+  .day-col { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .day-header { padding: 10px 12px; font-weight: 700; font-size: 13px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .day-header .clear-day { font-size: 11px; color: var(--muted); cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+  .day-header .clear-day:hover { color: var(--red); background: #fdeaea; }
+  .slot-block { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  .slot-block:last-child { border-bottom: none; }
+  .slot-label { font-size: 11px; font-weight: 600; color: var(--muted); display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
+  .slot-entry { font-size: 12px; padding: 3px 6px; background: var(--bg); border-radius: 6px; margin-bottom: 3px; display: flex; justify-content: space-between; align-items: center; gap: 4px; }
+  .slot-entry .rm { cursor: pointer; color: var(--muted); font-size: 10px; flex-shrink: 0; }
+  .slot-entry .rm:hover { color: var(--red); }
+  .slot-add { font-size: 11px; color: var(--accent); cursor: pointer; margin-top: 2px; }
+  .slot-add:hover { text-decoration: underline; }
+
+  /* Slots colors */
+  .slot-peq { --sc: #f59e0b; }
+  .slot-lm  { --sc: #6ec96e; }
+  .slot-alm { --sc: #5ba4cf; }
+  .slot-lt  { --sc: #e0913a; }
+  .slot-jan { --sc: #9b7fd4; }
+  .slot-sei { --sc: #e07a8a; }
+  .slot-label { color: var(--sc, var(--muted)); }
+
+  /* ── Settings Modal ── */
+  .settings-row { display: flex; gap: 8px; align-items: center; }
+  .settings-row input { flex: 1; }
+  .test-result { font-size: 12px; margin-top: 6px; }
+
+  /* ── Empty state ── */
+  .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty .big { font-size: 48px; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════ HEADER -->
+<header>
+  <span id="statusDot" class="status-dot red" title="Estado da ligação ao backend"></span>
+  <h1>🍽️ Receitas</h1>
+  <button class="btn-icon" title="Definições API" onclick="openSettings()">⚙️</button>
+</header>
+
+<!-- ═══════════════════════════════════════════ TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="showTab('receitas')">📖 Receitas</div>
+  <div class="tab" onclick="showTab('plano')">📅 Plano de Refeições</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ PAGE: RECEITAS -->
+<div id="page-receitas" class="page active">
+
+  <!-- Lista de receitas -->
+  <div id="view-list">
+    <div class="toolbar">
+      <input id="searchInput" class="search-box" placeholder="🔍 Pesquisar receitas..." oninput="renderRecipes()"/>
+      <select id="filterCat" class="filter" onchange="renderRecipes()">
+        <option value="">Todas as categorias</option>
+        <option>Sopas</option><option>Carnes</option><option>Peixe</option>
+        <option>Vegetariano</option><option>Massas</option><option>Saladas</option>
+        <option>Sobremesas</option><option>Snacks</option><option>Pequeno-almoço</option>
+        <option>Bebidas</option><option>Outro</option>
+      </select>
+      <button class="btn btn-primary" onclick="openRecipeModal()">+ Nova Receita</button>
+    </div>
+    <div id="recipesGrid" class="recipes-grid"></div>
+  </div>
+
+  <!-- Detalhe receita -->
+  <div id="view-detail" class="recipe-detail">
+    <div class="toolbar">
+      <button class="btn btn-ghost" onclick="showList()">← Voltar</button>
+      <button class="btn btn-primary" onclick="editCurrent()">✏️ Editar</button>
+      <button class="btn btn-danger" onclick="deleteCurrent()">🗑 Apagar</button>
+    </div>
+    <div class="detail-header">
+      <div id="detailEmoji" class="detail-emoji">🍽️</div>
+      <div>
+        <h2 id="detailName"></h2>
+        <div class="detail-meta" id="detailMeta"></div>
+      </div>
+    </div>
+    <div class="detail-section">
+      <h4>🧂 Ingredientes</h4>
+      <p id="detailIngredients"></p>
+    </div>
+    <div class="detail-section">
+      <h4>👨‍🍳 Preparação</h4>
+      <p id="detailPreparation"></p>
+    </div>
+    <div id="detailNotesSection" class="detail-section" style="display:none">
+      <h4>📝 Notas</h4>
+      <p id="detailNotes"></p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ PAGE: PLANO -->
+<div id="page-plano" class="page">
+  <div class="week-nav">
+    <button class="btn btn-ghost" onclick="prevWeek()">‹</button>
+    <h2 id="weekLabel"></h2>
+    <button class="btn btn-ghost" onclick="nextWeek()">›</button>
+    <button class="btn btn-ghost" onclick="goToday()">Hoje</button>
+  </div>
+  <div id="dayGrid" class="day-grid"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════ MODAL: RECEITA -->
+<div id="recipeOverlay" class="overlay" onclick="closeIfBackdrop(event,'recipeOverlay')">
+  <div class="modal">
+    <h2 id="modalTitle">Nova Receita</h2>
+    <input type="hidden" id="editId"/>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Emoji</label>
+        <input id="fEmoji" value="🍽️" maxlength="4"/>
+      </div>
+      <div class="form-group">
+        <label>Nome *</label>
+        <input id="fName" placeholder="ex: Arroz de Pato"/>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Categoria</label>
+        <select id="fCat">
+          <option>Sopas</option><option>Carnes</option><option>Peixe</option>
+          <option>Vegetariano</option><option>Massas</option><option>Saladas</option>
+          <option>Sobremesas</option><option>Snacks</option><option>Pequeno-almoço</option>
+          <option>Bebidas</option><option selected>Outro</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Dificuldade</label>
+        <select id="fDiff">
+          <option>fácil</option><option selected>médio</option><option>difícil</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Tempo (ex: 30 min)</label>
+        <input id="fTime" placeholder="30 min"/>
+      </div>
+      <div class="form-group">
+        <label>Porções</label>
+        <input id="fServings" type="number" value="4" min="1"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Ingredientes</label>
+      <textarea id="fIngredients" rows="4" placeholder="500g frango&#10;2 dentes alho&#10;..."></textarea>
+    </div>
+    <div class="form-group">
+      <label>Preparação</label>
+      <textarea id="fPrep" rows="5" placeholder="1. Temperar o frango...&#10;2. ..."></textarea>
+    </div>
+    <div class="form-group">
+      <label>Notas</label>
+      <textarea id="fNotes" rows="2" placeholder="Dica: ..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('recipeOverlay')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveRecipe()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ MODAL: MEAL ENTRY -->
+<div id="mealOverlay" class="overlay" onclick="closeIfBackdrop(event,'mealOverlay')">
+  <div class="modal" style="max-width:400px">
+    <h2 id="mealModalTitle">Adicionar refeição</h2>
+    <div class="form-group">
+      <label>Texto livre</label>
+      <input id="mealText" placeholder="ex: Sopa de legumes, iogurte..."/>
+    </div>
+    <div class="form-group">
+      <label>Ou escolher receita</label>
+      <select id="mealRecipeSel">
+        <option value="">— Nenhuma —</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('mealOverlay')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveMealEntry()">Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ MODAL: SETTINGS -->
+<div id="settingsOverlay" class="overlay" onclick="closeIfBackdrop(event,'settingsOverlay')">
+  <div class="modal" style="max-width:420px">
+    <h2>⚙️ Configuração API</h2>
+    <div class="form-group">
+      <label>URL do Backend (Cloud Run)</label>
+      <div class="settings-row">
+        <input id="sUrl" placeholder="https://receitas-api-xxx.run.app"/>
+        <button class="btn btn-ghost" onclick="testConnection()">Testar</button>
+      </div>
+      <div id="testResult" class="test-result"></div>
+    </div>
+    <div class="form-group">
+      <label>API Key (opcional)</label>
+      <input id="sKey" type="password" placeholder="chave-secreta"/>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-top:8px">
+      Sem URL configurado, a app funciona offline com dados locais (localStorage).
+    </p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('settingsOverlay')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveSettings()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ SCRIPT -->
+<script>
+// ─────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────
+let recipes = [];
+let meals = {};
+let currentRecipe = null;
+let currentWeekStart = getMonday(new Date());
+
+// Pending meal modal state
+let _mealDate = null, _mealSlot = null;
+
+// ─────────────────────────────────────────────
+// Settings / Config
+// ─────────────────────────────────────────────
+function getApiUrl() { return localStorage.getItem('api_url') || ''; }
+function getApiKey() { return localStorage.getItem('api_key') || ''; }
+
+function headers(extra={}) {
+  const h = {'Content-Type':'application/json', ...extra};
+  if (getApiKey()) h['X-API-Key'] = getApiKey();
+  return h;
+}
+
+// ─────────────────────────────────────────────
+// Status dot
+// ─────────────────────────────────────────────
+function setStatus(s) { // 'green' | 'red' | 'orange'
+  const d = document.getElementById('statusDot');
+  d.className = 'status-dot' + (s !== 'green' ? ' ' + s : '');
+}
+
+// ─────────────────────────────────────────────
+// API helpers
+// ─────────────────────────────────────────────
+async function apiFetch(path, opts={}) {
+  const base = getApiUrl();
+  if (!base) throw new Error('Sem URL configurado');
+  setStatus('orange');
+  const res = await fetch(base.replace(/\/$/, '') + path, {
+    ...opts,
+    headers: headers(opts.headers || {})
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  setStatus('green');
+  return res.status === 204 ? null : res.json();
+}
+
+// ─────────────────────────────────────────────
+// Data load/sync
+// ─────────────────────────────────────────────
+async function loadAll() {
+  if (!getApiUrl()) {
+    loadFromLocal();
+    setStatus('red');
+    return;
+  }
+  try {
+    [recipes, meals] = await Promise.all([
+      apiFetch('/recipes'),
+      apiFetch('/meals')
+    ]);
+    saveToLocal();
+    setStatus('green');
+  } catch(e) {
+    loadFromLocal();
+    setStatus('red');
+  }
+  renderRecipes();
+  renderWeek();
+}
+
+function loadFromLocal() {
+  try { recipes = JSON.parse(localStorage.getItem('recipes') || '[]'); } catch { recipes = []; }
+  try { meals = JSON.parse(localStorage.getItem('meals') || '{}'); } catch { meals = {}; }
+}
+
+function saveToLocal() {
+  localStorage.setItem('recipes', JSON.stringify(recipes));
+  localStorage.setItem('meals', JSON.stringify(meals));
+}
+
+// ─────────────────────────────────────────────
+// Tabs
+// ─────────────────────────────────────────────
+function showTab(t) {
+  document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', i === (t==='receitas'?0:1)));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + t).classList.add('active');
+  if (t === 'plano') renderWeek();
+}
+
+// ─────────────────────────────────────────────
+// RECEITAS — render
+// ─────────────────────────────────────────────
+function renderRecipes() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const cat = document.getElementById('filterCat').value;
+  let list = recipes.filter(r =>
+    (!q || r.name.toLowerCase().includes(q) || (r.ingredients||'').toLowerCase().includes(q)) &&
+    (!cat || r.category === cat)
+  );
+  const grid = document.getElementById('recipesGrid');
+  if (!list.length) {
+    grid.innerHTML = '<div class="empty"><div class="big">🍽️</div><p>Sem receitas. Adiciona a primeira!</p></div>';
+    return;
+  }
+  grid.innerHTML = list.map(r => `
+    <div class="recipe-card" onclick="showDetail('${r.id}')">
+      <div class="emoji">${r.emoji||'🍽️'}</div>
+      <h3>${esc(r.name)}</h3>
+      <div class="meta">
+        <span class="badge">${esc(r.category||'Outro')}</span>
+        ${r.time ? `<span>⏱ ${esc(r.time)}</span>` : ''}
+        ${r.servings ? `<span>👥 ${r.servings}</span>` : ''}
+        <span>${diffIcon(r.difficulty)} ${esc(r.difficulty||'')}</span>
+      </div>
+    </div>`).join('');
+}
+
+function diffIcon(d) { return {fácil:'🟢', médio:'🟡', difícil:'🔴'}[d] || ''; }
+function esc(s='') { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ─────────────────────────────────────────────
+// RECEITAS — detail
+// ─────────────────────────────────────────────
+function showDetail(id) {
+  currentRecipe = recipes.find(r => r.id === id);
+  if (!currentRecipe) return;
+  document.getElementById('view-list').style.display = 'none';
+  document.getElementById('view-detail').classList.add('active');
+  document.getElementById('detailEmoji').textContent = currentRecipe.emoji || '🍽️';
+  document.getElementById('detailName').textContent = currentRecipe.name;
+  document.getElementById('detailMeta').innerHTML = `
+    <span class="badge">${esc(currentRecipe.category)}</span>
+    ${currentRecipe.time ? `<span class="badge" style="background:#edf7ed;color:#4caf6e">⏱ ${esc(currentRecipe.time)}</span>` : ''}
+    ${currentRecipe.servings ? `<span class="badge" style="background:#e8f0fe;color:#3b6fe0">👥 ${currentRecipe.servings} porções</span>` : ''}
+    <span class="badge" style="background:#fafafa">${diffIcon(currentRecipe.difficulty)} ${esc(currentRecipe.difficulty)}</span>
+  `;
+  document.getElementById('detailIngredients').textContent = currentRecipe.ingredients || '—';
+  document.getElementById('detailPreparation').textContent = currentRecipe.preparation || '—';
+  const noteSec = document.getElementById('detailNotesSection');
+  if (currentRecipe.notes) {
+    noteSec.style.display = 'block';
+    document.getElementById('detailNotes').textContent = currentRecipe.notes;
+  } else { noteSec.style.display = 'none'; }
+}
+
+function showList() {
+  document.getElementById('view-list').style.display = '';
+  document.getElementById('view-detail').classList.remove('active');
+  currentRecipe = null;
+}
+
+// ─────────────────────────────────────────────
+// RECEITAS — modal (create / edit)
+// ─────────────────────────────────────────────
+function openRecipeModal(r=null) {
+  document.getElementById('modalTitle').textContent = r ? 'Editar Receita' : 'Nova Receita';
+  document.getElementById('editId').value = r ? r.id : '';
+  document.getElementById('fEmoji').value = r ? r.emoji : '🍽️';
+  document.getElementById('fName').value = r ? r.name : '';
+  document.getElementById('fCat').value = r ? r.category : 'Outro';
+  document.getElementById('fDiff').value = r ? r.difficulty : 'médio';
+  document.getElementById('fTime').value = r ? (r.time||'') : '';
+  document.getElementById('fServings').value = r ? (r.servings||4) : 4;
+  document.getElementById('fIngredients').value = r ? (r.ingredients||'') : '';
+  document.getElementById('fPrep').value = r ? (r.preparation||'') : '';
+  document.getElementById('fNotes').value = r ? (r.notes||'') : '';
+  openModal('recipeOverlay');
+}
+
+function editCurrent() { if (currentRecipe) openRecipeModal(currentRecipe); }
+
+async function saveRecipe() {
+  const name = document.getElementById('fName').value.trim();
+  if (!name) { alert('O nome é obrigatório.'); return; }
+  const body = {
+    name,
+    emoji: document.getElementById('fEmoji').value.trim() || '🍽️',
+    category: document.getElementById('fCat').value,
+    difficulty: document.getElementById('fDiff').value,
+    time: document.getElementById('fTime').value.trim(),
+    servings: parseInt(document.getElementById('fServings').value) || 4,
+    ingredients: document.getElementById('fIngredients').value.trim(),
+    preparation: document.getElementById('fPrep').value.trim(),
+    notes: document.getElementById('fNotes').value.trim(),
+  };
+  const id = document.getElementById('editId').value;
+  try {
+    if (id) {
+      const updated = await apiFetch(`/recipes/${id}`, {method:'PUT', body:JSON.stringify(body)});
+      const i = recipes.findIndex(r=>r.id===id);
+      if (i>=0) recipes[i] = updated; else recipes.push(updated);
+      currentRecipe = updated;
+    } else {
+      const created = await apiFetch('/recipes', {method:'POST', body:JSON.stringify(body)});
+      recipes.push(created);
+    }
+  } catch {
+    // offline fallback
+    if (id) {
+      const i = recipes.findIndex(r=>r.id===id);
+      if (i>=0) { recipes[i] = {...recipes[i], ...body}; currentRecipe = recipes[i]; }
+    } else {
+      const r = {...body, id: crypto.randomUUID(), created_at: new Date().toISOString()};
+      recipes.push(r);
+    }
+  }
+  saveToLocal();
+  closeModal('recipeOverlay');
+  if (id) showDetail(id); else showList();
+  renderRecipes();
+}
+
+async function deleteCurrent() {
+  if (!currentRecipe) return;
+  if (!confirm(`Apagar "${currentRecipe.name}"?`)) return;
+  try { await apiFetch(`/recipes/${currentRecipe.id}`, {method:'DELETE'}); } catch {}
+  recipes = recipes.filter(r => r.id !== currentRecipe.id);
+  saveToLocal();
+  showList();
+  renderRecipes();
+}
+
+// ─────────────────────────────────────────────
+// PLANO DE REFEIÇÕES
+// ─────────────────────────────────────────────
+const SLOTS = [
+  {key:'peq-almoço',  label:'Pequeno-almoço', icon:'☀️',  cls:'slot-peq'},
+  {key:'lanche-manhã',label:'Lanche Manhã',   icon:'🍎', cls:'slot-lm'},
+  {key:'almoço',      label:'Almoço',          icon:'🌿', cls:'slot-alm'},
+  {key:'lanche-tarde',label:'Lanche Tarde',    icon:'🍊', cls:'slot-lt'},
+  {key:'jantar',      label:'Jantar',           icon:'🌙', cls:'slot-jan'},
+  {key:'seia',        label:'Seia',             icon:'🌛', cls:'slot-sei'},
+];
+const DAYS = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+
+function getMonday(d) {
+  const dt = new Date(d);
+  const day = dt.getDay();
+  const diff = (day === 0 ? -6 : 1 - day);
+  dt.setDate(dt.getDate() + diff);
+  dt.setHours(0,0,0,0);
+  return dt;
+}
+
+function isoDate(d) { return d.toISOString().split('T')[0]; }
+
+function prevWeek() { currentWeekStart = new Date(currentWeekStart); currentWeekStart.setDate(currentWeekStart.getDate()-7); renderWeek(); }
+function nextWeek() { currentWeekStart = new Date(currentWeekStart); currentWeekStart.setDate(currentWeekStart.getDate()+7); renderWeek(); }
+function goToday() { currentWeekStart = getMonday(new Date()); renderWeek(); }
+
+function renderWeek() {
+  const fmt = new Intl.DateTimeFormat('pt-PT', {day:'numeric', month:'short'});
+  const end = new Date(currentWeekStart); end.setDate(end.getDate()+6);
+  document.getElementById('weekLabel').textContent = `${fmt.format(currentWeekStart)} – ${fmt.format(end)}`;
+  const grid = document.getElementById('dayGrid');
+  const today = isoDate(new Date());
+
+  let html = '';
+  for (let i=0; i<7; i++) {
+    const d = new Date(currentWeekStart); d.setDate(d.getDate()+i);
+    const ds = isoDate(d);
+    const isToday = ds === today;
+    html += `<div class="day-col" style="${isToday?'border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-light)':''}">
+      <div class="day-header">
+        <span>${DAYS[i]} <span style="font-weight:400;color:var(--muted)">${d.getDate()}</span>${isToday?' <span style="color:var(--accent)">●</span>':''}</span>
+        <span class="clear-day" onclick="clearDay('${ds}')">✕</span>
+      </div>`;
+    SLOTS.forEach(s => {
+      const entries = (meals[ds]?.[s.key]) || [];
+      html += `<div class="slot-block">
+        <div class="slot-label ${s.cls}">${s.icon} ${s.label}</div>`;
+      entries.forEach((e, idx) => {
+        html += `<div class="slot-entry">
+          <span>${esc(e.text)}</span>
+          <span class="rm" onclick="removeMeal('${ds}','${s.key}',${idx})">✕</span>
+        </div>`;
+      });
+      html += `<span class="slot-add" onclick="openMealModal('${ds}','${s.key}')">+ add</span></div>`;
+    });
+    html += '</div>';
+  }
+  grid.innerHTML = html;
+}
+
+function openMealModal(date, slot) {
+  _mealDate = date; _mealSlot = slot;
+  const s = SLOTS.find(x=>x.key===slot);
+  document.getElementById('mealModalTitle').textContent = `${s?.icon||''} ${s?.label||slot}`;
+  document.getElementById('mealText').value = '';
+  // Populate recipe select
+  const sel = document.getElementById('mealRecipeSel');
+  sel.innerHTML = '<option value="">— Nenhuma —</option>' +
+    recipes.map(r=>`<option value="${r.id}">${r.emoji||'🍽️'} ${esc(r.name)}</option>`).join('');
+  openModal('mealOverlay');
+  setTimeout(()=>document.getElementById('mealText').focus(), 100);
+}
+
+async function saveMealEntry() {
+  const recipeId = document.getElementById('mealRecipeSel').value;
+  let text = document.getElementById('mealText').value.trim();
+  if (recipeId) {
+    const r = recipes.find(x=>x.id===recipeId);
+    if (r) text = text || `${r.emoji||''} ${r.name}`;
+  }
+  if (!text) { alert('Escreve algo ou escolhe uma receita.'); return; }
+  const entry = { text, recipe_id: recipeId || null };
+  try {
+    const created = await apiFetch(`/meals/${_mealDate}/${encodeURIComponent(_mealSlot)}`, {method:'POST', body:JSON.stringify(entry)});
+    if (!meals[_mealDate]) meals[_mealDate] = {};
+    if (!meals[_mealDate][_mealSlot]) meals[_mealDate][_mealSlot] = [];
+    meals[_mealDate][_mealSlot].push(created);
+  } catch {
+    if (!meals[_mealDate]) meals[_mealDate] = {};
+    if (!meals[_mealDate][_mealSlot]) meals[_mealDate][_mealSlot] = [];
+    meals[_mealDate][_mealSlot].push({ id: crypto.randomUUID(), ...entry });
+  }
+  saveToLocal();
+  closeModal('mealOverlay');
+  renderWeek();
+}
+
+async function removeMeal(date, slot, idx) {
+  try { await apiFetch(`/meals/${date}/${encodeURIComponent(slot)}/${idx}`, {method:'DELETE'}); } catch {}
+  if (meals[date]?.[slot]) {
+    meals[date][slot].splice(idx, 1);
+    if (!meals[date][slot].length) delete meals[date][slot];
+    if (!Object.keys(meals[date]||{}).length) delete meals[date];
+  }
+  saveToLocal();
+  renderWeek();
+}
+
+async function clearDay(date) {
+  if (!confirm(`Limpar todas as entradas de ${date}?`)) return;
+  try { await apiFetch(`/meals/${date}`, {method:'DELETE'}); } catch {}
+  delete meals[date];
+  saveToLocal();
+  renderWeek();
+}
+
+// ─────────────────────────────────────────────
+// Settings
+// ─────────────────────────────────────────────
+function openSettings() {
+  document.getElementById('sUrl').value = getApiUrl();
+  document.getElementById('sKey').value = getApiKey();
+  document.getElementById('testResult').textContent = '';
+  openModal('settingsOverlay');
+}
+
+async function testConnection() {
+  const url = document.getElementById('sUrl').value.trim();
+  const key = document.getElementById('sKey').value.trim();
+  const el = document.getElementById('testResult');
+  if (!url) { el.textContent = '⚠️ Introduz um URL.'; el.style.color = 'var(--orange)'; return; }
+  el.textContent = '⏳ A testar...'; el.style.color = 'var(--muted)';
+  try {
+    const h = {'Content-Type':'application/json'};
+    if (key) h['X-API-Key'] = key;
+    const res = await fetch(url.replace(/\/$/, '') + '/health', {headers: h});
+    if (res.ok) {
+      const data = await res.json();
+      el.textContent = `✅ Ligado! Storage: ${data.storage}`;
+      el.style.color = 'var(--green)';
+    } else {
+      el.textContent = `❌ Erro HTTP ${res.status}`;
+      el.style.color = 'var(--red)';
+    }
+  } catch(e) {
+    el.textContent = `❌ Sem ligação: ${e.message}`;
+    el.style.color = 'var(--red)';
+  }
+}
+
+function saveSettings() {
+  const url = document.getElementById('sUrl').value.trim();
+  const key = document.getElementById('sKey').value.trim();
+  localStorage.setItem('api_url', url);
+  localStorage.setItem('api_key', key);
+  closeModal('settingsOverlay');
+  loadAll();
+}
+
+// ─────────────────────────────────────────────
+// Modal helpers
+// ─────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function closeIfBackdrop(e, id) { if (e.target.id === id) closeModal(id); }
+
+// ─────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────
+loadAll();
+</script>
+</body>
+</html>
