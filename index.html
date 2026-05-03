@@ -949,6 +949,107 @@ function pdBorderStrip(doc,y,pw){
   }
 }
 
+/* ── bouquet / arrangement of motifs ── */
+function pdBouquet(doc,cx,cy){
+  // stems
+  doc.setDrawColor(90,110,65);doc.setLineWidth(0.5);
+  doc.line(cx,cy+32,cx,cy-18);
+  doc.line(cx,cy+12,cx-32,cy-12);doc.line(cx,cy+12,cx+32,cy-12);
+  doc.line(cx,cy+20,cx-20,cy+4);doc.line(cx,cy+20,cx+20,cy+4);
+  doc.line(cx-10,cy+26,cx-26,cy+37);doc.line(cx+10,cy+26,cx+26,cy+37);
+  // leaves
+  pdLeaf(doc,cx-38,cy-10,7);pdLeaf(doc,cx+38,cy-10,7);
+  pdLeaf(doc,cx-22,cy+5,5);pdLeaf(doc,cx+22,cy+5,5);
+  pdLeaf(doc,cx-28,cy+38,5);pdLeaf(doc,cx+28,cy+38,5);
+  pdLeaf(doc,cx,cy-22,6);pdLeaf(doc,cx-11,cy-15,4);pdLeaf(doc,cx+11,cy-15,4);
+  // oranges
+  pdOrange(doc,cx,cy-5,10);
+  pdOrange(doc,cx-25,cy-7,9);pdOrange(doc,cx+25,cy-7,9);
+  pdOrange(doc,cx-44,cy+3,7);pdOrange(doc,cx+44,cy+3,7);
+  pdOrange(doc,cx-14,cy+16,7);pdOrange(doc,cx+14,cy+16,7);
+  // flowers
+  pdFlower(doc,cx-12,cy-22,8);pdFlower(doc,cx+12,cy-22,8);
+  pdFlower(doc,cx-34,cy+17,7);pdFlower(doc,cx+34,cy+17,7);
+  pdFlower(doc,cx,cy+31,6);
+}
+
+/* ── corner botanical cluster ── */
+function pdCornerCluster(doc,cx,cy,flip){
+  pdLeaf(doc,cx+flip*5,cy-3,5);
+  pdOrange(doc,cx,cy+6,5);
+  pdFlower(doc,cx+flip*11,cy+5,4);
+  pdLeaf(doc,cx-flip*4,cy+8,4);
+}
+
+/* ── elegant double border + corner accent squares ── */
+function pdElegantBorder(doc,pw,ph){
+  doc.setDrawColor(...PC.teal);doc.setLineWidth(1.5);
+  doc.rect(8,8,pw-16,ph-16);
+  doc.setLineWidth(0.35);doc.rect(12,12,pw-24,ph-24);
+  doc.setFillColor(...PC.accent);
+  [[7,7],[pw-11,7],[7,ph-11],[pw-11,ph-11]].forEach(([x,y])=>doc.rect(x,y,4,4,'F'));
+}
+
+/* ── cover page ── */
+function pdDrawCover(doc,pw,ph,m,count){
+  doc.setFillColor(...PC.cream);doc.rect(0,0,pw,ph,'F');
+  pdElegantBorder(doc,pw,ph);
+  pdCornerCluster(doc,22,24,1);pdCornerCluster(doc,pw-22,24,-1);
+  pdCornerCluster(doc,22,ph-24,1);pdCornerCluster(doc,pw-22,ph-24,-1);
+  // central bouquet
+  pdBouquet(doc,pw/2,106);
+  // dividers
+  doc.setDrawColor(...PC.teal);doc.setLineWidth(0.9);doc.line(30,156,pw-30,156);
+  doc.setLineWidth(0.3);doc.line(36,159,pw-36,159);
+  // title
+  doc.setFont('helvetica','bold');doc.setFontSize(29);doc.setTextColor(...PC.teal);
+  doc.text('As Minhas Receitas',pw/2,175,{align:'center'});
+  // subtitle
+  doc.setFont('helvetica','italic');doc.setFontSize(15);doc.setTextColor(...PC.accent);
+  doc.text('de Susana',pw/2,189,{align:'center'});
+  // flanking motifs
+  pdOrange(doc,pw/2-48,181,5);pdOrange(doc,pw/2+48,181,5);
+  pdFlower(doc,pw/2-60,177,4);pdFlower(doc,pw/2+60,177,4);
+  // dividers below title
+  doc.setDrawColor(...PC.teal);doc.setLineWidth(0.3);doc.line(36,196,pw-36,196);
+  doc.setLineWidth(0.9);doc.line(30,199,pw-30,199);
+  // count & date
+  doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(...PC.muted);
+  doc.text(count+' receitas',pw/2,213,{align:'center'});
+  doc.setFontSize(9);
+  doc.text(new Date().toLocaleDateString('pt-PT',{day:'numeric',month:'long',year:'numeric'}),pw/2,223,{align:'center'});
+}
+
+/* ── category separator page ── */
+function pdDrawCategory(doc,cat,count,pw,ph){
+  doc.setFillColor(...PC.cream);doc.rect(0,0,pw,ph,'F');
+  pdElegantBorder(doc,pw,ph);
+  pdCornerCluster(doc,22,24,1);pdCornerCluster(doc,pw-22,24,-1);
+  pdCornerCluster(doc,22,ph-24,1);pdCornerCluster(doc,pw-22,ph-24,-1);
+  // bouquet above text
+  pdBouquet(doc,pw/2,98);
+  // divider above category
+  doc.setDrawColor(...PC.teal);doc.setLineWidth(0.9);doc.line(30,148,pw-30,148);
+  doc.setLineWidth(0.3);doc.line(36,151,pw-36,151);
+  // category name
+  const cl=doc.splitTextToSize(cat,pw-50);
+  const fs=cl.length>1?26:32;
+  doc.setFont('helvetica','bold');doc.setFontSize(fs);doc.setTextColor(...PC.teal);
+  const catY=173;
+  cl.forEach((line,i)=>doc.text(line,pw/2,catY+i*fs*0.42,{align:'center'}));
+  const lastY=catY+(cl.length-1)*fs*0.42;
+  // count
+  doc.setFont('helvetica','italic');doc.setFontSize(11);doc.setTextColor(...PC.muted);
+  doc.text(count+' receita'+(count!==1?'s':''),pw/2,lastY+16,{align:'center'});
+  // divider below
+  doc.setDrawColor(...PC.teal);
+  doc.setLineWidth(0.3);doc.line(36,lastY+22,pw-36,lastY+22);
+  doc.setLineWidth(0.9);doc.line(30,lastY+25,pw-30,lastY+25);
+  // small accent motifs flanking category
+  pdOrange(doc,30,catY+6,5);pdOrange(doc,pw-30,catY+6,5);
+  pdFlower(doc,22,catY,4);pdFlower(doc,pw-22,catY,4);
+}
+
 /* ── layout helpers ── */
 function pdHeading(doc,label,y,m){
   doc.setFont('helvetica','bold');doc.setFontSize(8.5);
@@ -984,6 +1085,23 @@ function imgFmt(dataUrl){
   if(dataUrl.startsWith('data:image/webp'))return'WEBP';
   return'JPEG';
 }
+/* ── get natural image dimensions from data URL ── */
+function imgNaturalSize(dataUrl){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>resolve({w:img.naturalWidth,h:img.naturalHeight});
+    img.onerror=()=>resolve({w:4,h:3});
+    img.src=dataUrl;
+  });
+}
+/* ── fit image inside maxW×maxH preserving aspect ratio; return {x,y,w,h} ── */
+function fitImg(natW,natH,maxW,maxH,originX,originY){
+  const aspect=natW/natH;
+  let w=maxW,h=w/aspect;
+  if(h>maxH){h=maxH;w=h*aspect;}
+  const x=originX+(maxW-w)/2;
+  return{x,y:originY,w,h};
+}
 /* ── strip emoji from string (PDF fonts don't support emoji) ── */
 function stripEmoji(s){
   return(s||'').replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27FF}\u{FE00}-\u{FEFF}]/gu,'').trim();
@@ -995,8 +1113,12 @@ async function pdDrawRecipe(doc,recipe){
   doc.setFillColor(...PC.cream);doc.rect(0,0,pw,ph,'F');
   // photo or botanical top
   if(recipe.photo){
-    try{doc.addImage(recipe.photo,imgFmt(recipe.photo),m,y,pw-m*2,68,'','MEDIUM');y+=71;}
-    catch(e){pdBorderStrip(doc,y+6,pw);y+=13;}
+    try{
+      const nat=await imgNaturalSize(recipe.photo);
+      const fi=fitImg(nat.w,nat.h,pw-m*2,80,m,y);
+      doc.addImage(recipe.photo,imgFmt(recipe.photo),fi.x,fi.y,fi.w,fi.h,'','MEDIUM');
+      y+=fi.h+4;
+    }catch(e){pdBorderStrip(doc,y+6,pw);y+=13;}
   }else{pdBorderStrip(doc,y+6,pw);y+=13;}
   // name (emoji stripped — PDF fonts don't support them)
   doc.setFont('helvetica','bold');doc.setFontSize(21);doc.setTextColor(...PC.teal);
@@ -1048,9 +1170,13 @@ async function pdDrawRecipe(doc,recipe){
           const ul='Link: '+(b.label||b.url);
           doc.text(ul,m,y);doc.link(m,y-4,doc.getTextWidth(ul),5,{url:b.url});y+=7;
         }else if(b.type==='image'&&b.data){
-          y=needY(doc,y,58,recipe.name);
-          try{doc.addImage(b.data,imgFmt(b.data),m,y,pw-m*2,56,'','MEDIUM');y+=59;}
-          catch(e){}
+          try{
+            const nat=await imgNaturalSize(b.data);
+            const fi=fitImg(nat.w,nat.h,pw-m*2,120,m,0);
+            y=needY(doc,y,fi.h+4,recipe.name);
+            doc.addImage(b.data,imgFmt(b.data),fi.x,y,fi.w,fi.h,'','MEDIUM');
+            y+=fi.h+4;
+          }catch(e){}
         }
       }
     }
@@ -1088,25 +1214,7 @@ async function exportAllPDF(btn){
     const pw=210,ph=297,m=15;
 
     /* ── capa ── */
-    doc.setFillColor(...PC.cream);doc.rect(0,0,pw,ph,'F');
-    doc.setFillColor(...PC.teal);
-    doc.rect(0,0,pw,5,'F');doc.rect(0,ph-5,pw,5,'F');
-    // motivos botânicos capa
-    pdOrange(doc,75,122,11);pdOrange(doc,140,115,12);
-    pdFlower(doc,109,106,8);pdFlower(doc,66,132,6);
-    pdLeaf(doc,57,116,9);pdLeaf(doc,154,118,8);pdLeaf(doc,148,104,6);
-    // linhas decorativas
-    doc.setDrawColor(...PC.teal);doc.setLineWidth(.8);
-    doc.line(45,142,165,142);doc.line(45,164,165,164);
-    // título
-    doc.setFont('helvetica','bold');doc.setFontSize(28);doc.setTextColor(...PC.teal);
-    doc.text('As Minhas Receitas',pw/2,154,{align:'center'});
-    doc.setFont('helvetica','italic');doc.setFontSize(13);doc.setTextColor(...PC.muted);
-    doc.text('de Susana',pw/2,172,{align:'center'});
-    doc.setFont('helvetica','normal');doc.setFontSize(10);
-    doc.text(recipes.length+' receitas',pw/2,184,{align:'center'});
-    doc.setFontSize(9);
-    doc.text(new Date().toLocaleDateString('pt-PT',{day:'numeric',month:'long',year:'numeric'}),pw/2,194,{align:'center'});
+    pdDrawCover(doc,pw,ph,m,recipes.length);
 
     /* ── categorias ── */
     const grouped={};
@@ -1114,24 +1222,7 @@ async function exportAllPDF(btn){
     for(const cat of Object.keys(grouped).sort((a,b)=>a.localeCompare(b,'pt'))){
       /* página separadora de categoria */
       doc.addPage();
-      doc.setFillColor(...PC.cream);doc.rect(0,0,pw,ph,'F');
-      // barra lateral teal
-      doc.setFillColor(...PC.teal);doc.rect(0,0,9,ph,'F');
-      // motivos botânicos à direita
-      pdOrange(doc,150,ph/2-20,12);pdFlower(doc,168,ph/2+6,9);
-      pdLeaf(doc,136,ph/2-8,9);pdOrange(doc,161,ph/2+22,8);pdLeaf(doc,174,ph/2-2,7);
-      // nome da categoria
-      doc.setFont('helvetica','bold');doc.setFontSize(36);doc.setTextColor(...PC.teal);
-      const cl=doc.splitTextToSize(cat,105);
-      const catY=ph/2-((cl.length-1)*18)/2;
-      cl.forEach((line,i)=>doc.text(line,20,catY+i*20));
-      // contagem
-      doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(...PC.muted);
-      const n=grouped[cat].length;
-      doc.text(n+' receita'+(n!==1?'s':''),20,catY+cl.length*20+4);
-      // barra de acento laranja
-      doc.setFillColor(...PC.accent);
-      doc.rect(13,catY-10,3.5,cl.length*20+18,'F');
+      pdDrawCategory(doc,cat,grouped[cat].length,pw,ph);
 
       /* receitas da categoria */
       for(const recipe of grouped[cat]){
