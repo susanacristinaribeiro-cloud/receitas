@@ -206,8 +206,8 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
   <div id="view-detail" class="recipe-detail">
     <div class="toolbar">
       <button class="btn btn-ghost" onclick="showList()">← Voltar</button>
-      <button class="btn btn-ghost" onclick="exportRecipePDF(currentRecipe,this)">📄 PDF</button>
       <div style="flex:1"></div>
+      <button class="btn btn-ghost" onclick="exportRecipePDF(currentRecipe,this)">📄 PDF</button>
       <button class="btn btn-teal" onclick="editCurrent()">✏️ Editar</button>
       <button class="btn btn-danger" onclick="deleteCurrent()">🗑 Apagar</button>
     </div>
@@ -1020,34 +1020,33 @@ function pdDrawCover(doc,pw,ph,m,count){
   doc.text(new Date().toLocaleDateString('pt-PT',{day:'numeric',month:'long',year:'numeric'}),pw/2,223,{align:'center'});
 }
 
-/* ── category separator page ── */
+/* ── category separator page (simple, secondary to cover) ── */
 function pdDrawCategory(doc,cat,count,pw,ph){
   doc.setFillColor(...PC.cream);doc.rect(0,0,pw,ph,'F');
-  pdElegantBorder(doc,pw,ph);
-  pdCornerCluster(doc,22,24,1);pdCornerCluster(doc,pw-22,24,-1);
-  pdCornerCluster(doc,22,ph-24,1);pdCornerCluster(doc,pw-22,ph-24,-1);
-  // bouquet above text
-  pdBouquet(doc,pw/2,98);
-  // divider above category
-  doc.setDrawColor(...PC.teal);doc.setLineWidth(0.9);doc.line(30,148,pw-30,148);
-  doc.setLineWidth(0.3);doc.line(36,151,pw-36,151);
-  // category name
+  // single clean border
+  doc.setDrawColor(...PC.teal);doc.setLineWidth(1.0);
+  doc.rect(10,10,pw-20,ph-20);
+  // accent corner squares
+  doc.setFillColor(...PC.accent);
+  [[9,9],[pw-13,9],[9,ph-13],[pw-13,ph-13]].forEach(([x,y])=>doc.rect(x,y,4,4,'F'));
+  // small botanical strip at top (inside border)
+  pdBorderStrip(doc,30,pw);
+  // vertical center — category name
   const cl=doc.splitTextToSize(cat,pw-50);
-  const fs=cl.length>1?26:32;
+  const fs=cl.length>1?30:38;
   doc.setFont('helvetica','bold');doc.setFontSize(fs);doc.setTextColor(...PC.teal);
-  const catY=173;
+  const catY=ph/2-(cl.length-1)*(fs*0.42)/2;
   cl.forEach((line,i)=>doc.text(line,pw/2,catY+i*fs*0.42,{align:'center'}));
   const lastY=catY+(cl.length-1)*fs*0.42;
+  // thin accent bar under name
+  doc.setFillColor(...PC.accent);
+  const barW=Math.min(doc.getTextWidth(cl[0])+10,pw-50);
+  doc.rect((pw-barW)/2,lastY+5,barW,1.5,'F');
   // count
   doc.setFont('helvetica','italic');doc.setFontSize(11);doc.setTextColor(...PC.muted);
-  doc.text(count+' receita'+(count!==1?'s':''),pw/2,lastY+16,{align:'center'});
-  // divider below
-  doc.setDrawColor(...PC.teal);
-  doc.setLineWidth(0.3);doc.line(36,lastY+22,pw-36,lastY+22);
-  doc.setLineWidth(0.9);doc.line(30,lastY+25,pw-30,lastY+25);
-  // small accent motifs flanking category
-  pdOrange(doc,30,catY+6,5);pdOrange(doc,pw-30,catY+6,5);
-  pdFlower(doc,22,catY,4);pdFlower(doc,pw-22,catY,4);
+  doc.text(count+' receita'+(count!==1?'s':''),pw/2,lastY+18,{align:'center'});
+  // small botanical strip at bottom (inside border)
+  pdBorderStrip(doc,ph-18,pw);
 }
 
 /* ── layout helpers ── */
@@ -1172,7 +1171,7 @@ async function pdDrawRecipe(doc,recipe){
         }else if(b.type==='image'&&b.data){
           try{
             const nat=await imgNaturalSize(b.data);
-            const fi=fitImg(nat.w,nat.h,pw-m*2,120,m,0);
+            const fi=fitImg(nat.w,nat.h,pw-m*2-20,60,m+10,0);
             y=needY(doc,y,fi.h+4,recipe.name);
             doc.addImage(b.data,imgFmt(b.data),fi.x,y,fi.w,fi.h,'','MEDIUM');
             y+=fi.h+4;
