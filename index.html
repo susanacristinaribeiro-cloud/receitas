@@ -155,6 +155,15 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
 .empty .big{font-size:40px;margin-bottom:10px;}
 .cat-input-wrap{display:flex;gap:6px;}.cat-input-wrap input{flex:1;}
 
+/* ── Notas ──────────────────────────────────────────────────────── */
+.notes-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;}
+.note-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;cursor:pointer;transition:box-shadow .15s,transform .1s;border-left:3px solid var(--teal);}
+.note-card:hover{box-shadow:var(--shadow);transform:translateY(-2px);}
+.note-card h3{font-size:14px;font-weight:700;margin-bottom:5px;color:var(--text);}
+.note-card .note-preview{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.note-card .note-date{font-size:11px;color:var(--muted);}
+.note-card .note-has-media{font-size:11px;color:var(--teal);margin-top:4px;}
+
 /* ── Lightbox ───────────────────────────────────────────────────── */
 #lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:500;align-items:center;justify-content:center;cursor:zoom-out;}
 #lightbox.open{display:flex;}
@@ -187,6 +196,7 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
 <div class="tabs">
   <div class="tab active" onclick="showTab('receitas')">📖 Receitas</div>
   <div class="tab" onclick="showTab('refeicoes')">🥗 Refeições</div>
+  <div class="tab" onclick="showTab('notas')">📓 Notas</div>
 </div>
 
 <!-- ═══ RECEITAS ═══ -->
@@ -231,6 +241,42 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
     <span style="font-size:13px;color:var(--muted)">Organiza as tuas refeições diárias por tipo</span>
   </div>
   <div id="slotGrid" class="slot-grid"></div>
+</div>
+
+<!-- ═══ NOTAS ═══ -->
+<div id="page-notas" class="page">
+  <div class="toolbar">
+    <input id="notesSearch" class="search-box" placeholder="🔍 Pesquisar notas..." oninput="renderNotesList()"/>
+    <button class="btn btn-primary" onclick="openNoteModal()">+ Nova Nota</button>
+  </div>
+  <div id="notesContainer"></div>
+</div>
+
+<!-- ═══ MODAL: NOTA ═══ -->
+<div id="noteOverlay" class="overlay" onclick="closeIfBackdrop(event,'noteOverlay')">
+  <div class="modal">
+    <h2 id="noteModalTitle">Nova Nota</h2>
+    <input type="hidden" id="noteEditId"/>
+    <div class="form-group">
+      <label>Título *</label>
+      <input id="nTitle" placeholder="ex: Dicas de temperos, Lista de compras..."/>
+    </div>
+    <div class="form-group">
+      <label>Conteúdo</label>
+      <div id="noteBlockList"></div>
+      <div class="notes-add-bar">
+        <button type="button" class="btn btn-ghost" onclick="addNoteBlock('text')">+ Texto</button>
+        <button type="button" class="btn btn-ghost" onclick="addNoteBlock('image')">+ Foto</button>
+        <button type="button" class="btn btn-ghost" onclick="addNoteBlock('url')">+ URL</button>
+      </div>
+      <input type="file" id="notePhotoInput" accept="image/*" style="display:none" onchange="onNotePhotoSelected(event)"/>
+    </div>
+    <div class="modal-footer">
+      <button id="noteDeleteBtn" class="btn btn-danger" style="display:none;margin-right:auto" onclick="deleteNote()">🗑 Apagar</button>
+      <button class="btn btn-ghost" onclick="closeModal('noteOverlay')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveNote()">Guardar</button>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ MODAL: RECEITA ═══ -->
@@ -336,7 +382,7 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
 <!-- ═══ MODAL: SETTINGS ═══ -->
 <div id="settingsOverlay" class="overlay" onclick="closeIfBackdrop(event,'settingsOverlay')">
   <div class="modal" style="max-width:420px">
-    <h2>⚙️ Configuração API</h2>
+    <h2>🔐 Autenticação</h2>
     <div class="form-group">
       <label>URL do Backend</label>
       <div class="settings-row">
@@ -349,7 +395,7 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
     <p style="font-size:12px;color:var(--muted);margin-top:8px">Sem URL, a app funciona offline com dados locais.</p>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('settingsOverlay')">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveSettings()">Guardar</button>
+      <button class="btn btn-primary" onclick="saveSettings()">🔑 Ligar</button>
     </div>
   </div>
 </div>
@@ -430,6 +476,7 @@ function buildHeaderBot(){
 let recipes=[], refeicoes={}, categories=[], currentRecipe=null;
 let notesBlocks=[], notesPhotoTargetIdx=-1;
 let carouselImages=[], carouselIdx=0;
+let appNotes=[], noteBlocks=[], notePhotoTargetIdx=-1;
 
 const SLOTS=[
   {key:'peq-almoço',  label:'Pequeno-almoço',icon:'☀️', cls:'sc-peq'},
@@ -465,8 +512,8 @@ async function apiFetch(path,opts={},timeoutMs=30000){
 async function loadAll(){
   if(!getApiUrl()){loadLocal();setStatus('red');render();return;}
   try{
-    [recipes,refeicoes,categories]=await Promise.all([
-      apiFetch('/recipes'),apiFetch('/refeicoes'),apiFetch('/categories')
+    [recipes,refeicoes,categories,appNotes]=await Promise.all([
+      apiFetch('/recipes'),apiFetch('/refeicoes'),apiFetch('/categories'),apiFetch('/notes')
     ]);
     saveLocal();setStatus('green');
   }catch{loadLocal();setStatus('red');}
@@ -476,13 +523,15 @@ function loadLocal(){
   try{recipes=JSON.parse(localStorage.getItem('recipes')||'[]');}catch{recipes=[];}
   try{refeicoes=JSON.parse(localStorage.getItem('refeicoes')||'{}');}catch{refeicoes={};}
   try{categories=JSON.parse(localStorage.getItem('categories')||'null')||[...DEFAULT_CATS];}catch{categories=[...DEFAULT_CATS];}
+  try{appNotes=JSON.parse(localStorage.getItem('appNotes')||'[]');}catch{appNotes=[];}
 }
 function saveLocal(){
   localStorage.setItem('recipes',JSON.stringify(recipes));
   localStorage.setItem('refeicoes',JSON.stringify(refeicoes));
   localStorage.setItem('categories',JSON.stringify(categories));
+  localStorage.setItem('appNotes',JSON.stringify(appNotes));
 }
-function render(){renderRecipes();renderSlots();populateCatFilter();populateCatDatalist();}
+function render(){renderRecipes();renderSlots();renderNotesList();populateCatFilter();populateCatDatalist();}
 
 function populateCatFilter(){
   const sel=document.getElementById('filterCat');const cur=sel.value;
@@ -497,8 +546,9 @@ function populateCatDatalist(){
 }
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
+const TAB_ORDER=['receitas','refeicoes','notas'];
 function showTab(t){
-  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',i===(t==='receitas'?0:1)));
+  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',i===TAB_ORDER.indexOf(t)));
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+t).classList.add('active');
 }
@@ -867,6 +917,144 @@ async function deleteRefeicao(slot,id){
   try{await apiFetch(`/refeicoes/${encodeURIComponent(slot)}/${id}`,{method:'DELETE'});}catch{}
   if(refeicoes[slot])refeicoes[slot]=refeicoes[slot].filter(e=>e.id!==id);
   saveLocal();renderSlots();
+}
+
+// ─── Notas ────────────────────────────────────────────────────────────────────
+function notePreview(blocks){
+  if(!blocks)return'';
+  const arr=Array.isArray(blocks)?blocks:(typeof blocks==='string'?[{type:'text',content:blocks}]:[]);
+  for(const b of arr){
+    if(b.type==='text'&&b.content)return b.content.replace(/\n/g,' ').slice(0,100);
+  }
+  return'';
+}
+function noteHasMedia(blocks){
+  if(!blocks||!Array.isArray(blocks))return false;
+  return blocks.some(b=>(b.type==='image'&&b.data)||(b.type==='url'&&b.url));
+}
+function formatDate(iso){
+  if(!iso)return'';
+  return new Date(iso).toLocaleDateString('pt-PT',{day:'numeric',month:'short',year:'numeric'});
+}
+
+function renderNotesList(){
+  const q=(document.getElementById('notesSearch')?.value||'').toLowerCase();
+  const list=appNotes.filter(n=>!q||n.title.toLowerCase().includes(q)||notePreview(n.blocks).toLowerCase().includes(q));
+  const el=document.getElementById('notesContainer');if(!el)return;
+  if(!list.length){
+    el.innerHTML='<div class="empty"><div class="big">📓</div><p>'+(appNotes.length?'Sem resultados.':'Ainda sem notas. Cria a primeira!')+'</p></div>';
+    return;
+  }
+  el.innerHTML=`<div class="notes-list">${list.map(n=>{
+    const prev=notePreview(n.blocks);
+    const media=noteHasMedia(n.blocks);
+    return`<div class="note-card" onclick="openNoteModal(appNotes.find(x=>x.id==='${n.id}'))">
+      <h3>${esc(n.title)}</h3>
+      ${prev?`<p class="note-preview">${esc(prev)}</p>`:''}
+      ${media?`<div class="note-has-media">📎 tem media</div>`:''}
+      <div class="note-date">${formatDate(n.created_at)}</div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+// ─── Note block editor ────────────────────────────────────────────────────────
+function renderNoteEditor(){
+  document.getElementById('noteBlockList').innerHTML=noteBlocks.map((b,i)=>{
+    if(b.type==='text')return`
+      <div class="notes-block">
+        <div class="notes-block-hdr"><span>📝 Texto</span><button type="button" onclick="removeNoteBlock(${i})">✕ Remover</button></div>
+        <textarea rows="3" oninput="noteBlocks[${i}].content=this.value">${escRaw(b.content||'')}</textarea>
+      </div>`;
+    if(b.type==='image')return`
+      <div class="notes-block">
+        <div class="notes-block-hdr"><span>📷 Foto</span><button type="button" onclick="removeNoteBlock(${i})">✕ Remover</button></div>
+        ${b.data
+          ?`<img src="${b.data}" style="max-width:100%;border-radius:8px;margin-bottom:6px;cursor:pointer" onclick="pickNotePhoto(${i})" title="Clica para trocar"/>
+            <div style="font-size:11px;color:var(--muted)">Clica na foto para trocar</div>`
+          :`<div class="photo-upload-area" onclick="pickNotePhoto(${i})">Clica para adicionar foto</div>`}
+      </div>`;
+    if(b.type==='url')return`
+      <div class="notes-block">
+        <div class="notes-block-hdr"><span>🔗 URL</span><button type="button" onclick="removeNoteBlock(${i})">✕ Remover</button></div>
+        <input type="url" placeholder="https://..." value="${esc(b.url||'')}" oninput="noteBlocks[${i}].url=this.value" style="margin-bottom:6px"/>
+        <div class="nb-url-label">Texto do link (opcional)</div>
+        <input type="text" placeholder="ex: Artigo interessante" value="${esc(b.label||'')}" oninput="noteBlocks[${i}].label=this.value"/>
+      </div>`;
+    return'';
+  }).join('');
+}
+function addNoteBlock(type){
+  if(type==='text')noteBlocks.push({type:'text',content:''});
+  else if(type==='image')noteBlocks.push({type:'image',data:null});
+  else if(type==='url')noteBlocks.push({type:'url',url:'',label:''});
+  renderNoteEditor();
+}
+function removeNoteBlock(i){noteBlocks.splice(i,1);renderNoteEditor();}
+function pickNotePhoto(i){
+  notePhotoTargetIdx=i;
+  document.getElementById('notePhotoInput').value='';
+  document.getElementById('notePhotoInput').click();
+}
+function onNotePhotoSelected(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      const MAX=800;let w=img.width,h=img.height;
+      if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
+      const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      noteBlocks[notePhotoTargetIdx].data=canvas.toDataURL('image/jpeg',.75);
+      renderNoteEditor();
+    };img.src=ev.target.result;
+  };reader.readAsDataURL(file);
+}
+
+// ─── Note modal ───────────────────────────────────────────────────────────────
+function openNoteModal(n=null){
+  document.getElementById('noteModalTitle').textContent=n?'Editar Nota':'Nova Nota';
+  document.getElementById('noteEditId').value=n?n.id:'';
+  document.getElementById('nTitle').value=n?n.title:'';
+  document.getElementById('noteDeleteBtn').style.display=n?'':'none';
+  noteBlocks=n&&n.blocks?(Array.isArray(n.blocks)?JSON.parse(JSON.stringify(n.blocks)):[{type:'text',content:n.blocks}]):[];
+  renderNoteEditor();
+  openModal('noteOverlay');
+  setTimeout(()=>document.getElementById('nTitle').focus(),120);
+}
+
+async function saveNote(){
+  const title=document.getElementById('nTitle').value.trim();
+  if(!title){alert('O título é obrigatório.');return;}
+  // sync textareas
+  document.querySelectorAll('#noteBlockList .notes-block').forEach((el,i)=>{
+    const ta=el.querySelector('textarea');if(ta&&noteBlocks[i])noteBlocks[i].content=ta.value;
+  });
+  const blocks=noteBlocks.length>0?noteBlocks:null;
+  const body={title,blocks};
+  const id=document.getElementById('noteEditId').value;
+  try{
+    if(id){
+      const u=await apiFetch(`/notes/${id}`,{method:'PUT',body:JSON.stringify(body)});
+      const i=appNotes.findIndex(n=>n.id===id);if(i>=0)appNotes[i]=u;
+    }else{
+      const c=await apiFetch('/notes',{method:'POST',body:JSON.stringify(body)});
+      appNotes.unshift(c);
+    }
+  }catch{
+    if(id){const i=appNotes.findIndex(n=>n.id===id);if(i>=0)appNotes[i]={...appNotes[i],...body};}
+    else appNotes.unshift({id:crypto.randomUUID(),title,blocks,created_at:new Date().toISOString()});
+  }
+  saveLocal();closeModal('noteOverlay');renderNotesList();
+}
+
+async function deleteNote(){
+  const id=document.getElementById('noteEditId').value;if(!id)return;
+  const n=appNotes.find(x=>x.id===id);
+  if(!confirm(`Apagar a nota "${n?.title||''}"?\nEsta ação não pode ser desfeita.`))return;
+  try{await apiFetch(`/notes/${id}`,{method:'DELETE'});}catch{}
+  appNotes=appNotes.filter(x=>x.id!==id);
+  saveLocal();closeModal('noteOverlay');renderNotesList();
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
