@@ -880,6 +880,9 @@ function openRecipeModal(r=null){
 async function saveRecipe(){
   const name=document.getElementById('fName').value.trim();
   if(!name){alert('O nome é obrigatório.');return;}
+  const btn=document.querySelector('#recipeOverlay .btn-primary');
+  const orig=btn?.textContent;
+  if(btn){btn.disabled=true;btn.textContent='⏳ A guardar...';}
   const cat=document.getElementById('fCat').value.trim()||'Outro';
   const photo=document.getElementById('fPhoto').value||null;
   const calVal=document.getElementById('fCalories').value;
@@ -904,6 +907,8 @@ async function saveRecipe(){
   }catch{
     if(id){const i=recipes.findIndex(r=>r.id===id);if(i>=0){recipes[i]={...recipes[i],...body};currentRecipe=recipes[i];}}
     else{const r={...body,id:crypto.randomUUID(),created_at:new Date().toISOString()};recipes.push(r);}
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=orig;}
   }
   saveLocal();closeModal('recipeOverlay');
   if(id)showDetail(id);else showList();
@@ -986,6 +991,9 @@ async function saveRefeicao(){
   const editId=document.getElementById('rfId').value;
   const name=document.getElementById('rfName').value.trim();
   if(!name){alert('O nome é obrigatório.');document.getElementById('rfName').focus();return;}
+  const btn=document.querySelector('#refeicaoOverlay .btn-primary');
+  const orig=btn?.textContent;
+  if(btn){btn.disabled=true;btn.textContent='⏳ A guardar...';}
   const recipe_id=document.getElementById('rfRecipeSel').value||null;
   const ingredients=document.getElementById('rfIngr').value.trim()||null;
   const body={name,recipe_id,ingredients};
@@ -1003,6 +1011,8 @@ async function saveRefeicao(){
     if(!refeicoes[slot])refeicoes[slot]=[];
     if(editId){const i=refeicoes[slot].findIndex(e=>e.id===editId);if(i>=0)refeicoes[slot][i]={...refeicoes[slot][i],...body};}
     else refeicoes[slot].push({id:crypto.randomUUID(),...body});
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=orig;}
   }
   saveLocal();closeModal('refeicaoOverlay');renderSlots();
 }
@@ -1132,6 +1142,9 @@ function openNoteModal(n=null){
 async function saveNote(){
   const title=document.getElementById('nTitle').value.trim();
   if(!title){alert('O título é obrigatório.');return;}
+  const btn=document.querySelector('#noteOverlay .btn-primary');
+  const orig=btn?.textContent;
+  if(btn){btn.disabled=true;btn.textContent='⏳ A guardar...';}
   // sync textareas
   document.querySelectorAll('#noteBlockList .notes-block').forEach((el,i)=>{
     const ta=el.querySelector('textarea');if(ta&&noteBlocks[i])noteBlocks[i].content=ta.value;
@@ -1150,6 +1163,8 @@ async function saveNote(){
   }catch{
     if(id){const i=appNotes.findIndex(n=>n.id===id);if(i>=0)appNotes[i]={...appNotes[i],...body};}
     else appNotes.unshift({id:crypto.randomUUID(),title,blocks,created_at:new Date().toISOString()});
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=orig;}
   }
   saveLocal();closeModal('noteOverlay');renderNotesList();
 }
