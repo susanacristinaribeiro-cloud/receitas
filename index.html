@@ -533,9 +533,12 @@ async function apiFetch(path,opts={},timeoutMs=30000){
 async function loadAll(){
   if(!getApiUrl()){loadLocal();setStatus('red');render();return;}
   try{
-    [recipes,refeicoes,categories,appNotes]=await Promise.all([
-      apiFetch('/recipes'),apiFetch('/refeicoes'),apiFetch('/categories'),apiFetch('/notes')
+    [recipes,refeicoes,categories]=await Promise.all([
+      apiFetch('/recipes'),apiFetch('/refeicoes'),apiFetch('/categories')
     ]);
+    // notas: endpoint opcional — não bloqueia se o backend ainda não foi atualizado
+    try{appNotes=await apiFetch('/notes');}
+    catch{appNotes=JSON.parse(localStorage.getItem('appNotes')||'[]');}
     saveLocal();setStatus('green');
   }catch{loadLocal();setStatus('red');}
   render();
