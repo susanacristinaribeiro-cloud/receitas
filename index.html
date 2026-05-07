@@ -164,6 +164,16 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
 .note-card .note-date{font-size:11px;color:var(--muted);}
 .note-card .note-has-media{font-size:11px;color:var(--teal);margin-top:4px;}
 
+/* ── Carousel editor (thumbnails) ───────────────────────────────── */
+.carousel-editor-grid{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0;}
+.carousel-thumb{position:relative;width:76px;}
+.carousel-thumb .img-wrap{width:76px;height:76px;}
+.carousel-thumb img{width:76px;height:76px;object-fit:cover;border-radius:6px;cursor:pointer;display:block;}
+.carousel-thumb-rm{position:absolute;top:-6px;right:-6px;background:var(--red);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;}
+.carousel-thumb-add{width:76px;height:76px;border:2px dashed var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--muted);cursor:pointer;flex-shrink:0;}
+.carousel-thumb-add:hover{border-color:var(--accent);color:var(--accent);}
+.carousel-title{font-size:13px;font-weight:700;color:var(--teal);margin:10px 0 4px;letter-spacing:.2px;}
+
 /* ── Image copy/paste overlay ───────────────────────────────────── */
 .img-wrap{position:relative;display:block;}
 .img-copy-btn{position:absolute;top:6px;right:6px;background:rgba(255,255,255,.88);border:none;border-radius:6px;padding:3px 9px;font-size:12px;cursor:pointer;opacity:0;transition:opacity .15s;box-shadow:0 1px 4px rgba(0,0,0,.2);z-index:10;}
@@ -276,6 +286,7 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
       <div class="notes-add-bar">
         <button type="button" class="btn btn-ghost" onclick="addNoteBlock('text')">+ Texto</button>
         <button type="button" class="btn btn-ghost" onclick="addNoteBlock('image')">+ Foto</button>
+        <button type="button" class="btn btn-ghost" onclick="addNoteBlock('carousel')">+ Carrossel</button>
         <button type="button" class="btn btn-ghost" onclick="addNoteBlock('url')">+ URL</button>
       </div>
       <input type="file" id="notePhotoInput" accept="image/*" style="display:none" onchange="onNotePhotoSelected(event)"/>
@@ -345,6 +356,7 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
       <div class="notes-add-bar">
         <button type="button" class="btn btn-ghost" onclick="addNotesBlock('text')">+ Texto</button>
         <button type="button" class="btn btn-ghost" onclick="addNotesBlock('image')">+ Foto</button>
+        <button type="button" class="btn btn-ghost" onclick="addNotesBlock('carousel')">+ Carrossel</button>
         <button type="button" class="btn btn-ghost" onclick="addNotesBlock('url')">+ URL</button>
       </div>
       <input type="file" id="notesPhotoInput" accept="image/*" style="display:none" onchange="onNotesPhotoSelected(event)"/>
@@ -484,8 +496,8 @@ function buildHeaderBot(){
 // ─── State ────────────────────────────────────────────────────────────────────
 let recipes=[], refeicoes={}, categories=[], currentRecipe=null;
 let notesBlocks=[], notesPhotoTargetIdx=-1;
-let carouselImages=[], carouselIdx=0;
 let appNotes=[], noteBlocks=[], notePhotoTargetIdx=-1;
+const carouselState={}; // {cid: {images:[], idx:0}}
 
 const SLOTS=[
   {key:'peq-almoço',  label:'Pequeno-almoço',icon:'☀️', cls:'sc-peq'},
@@ -624,52 +636,53 @@ function showDetail(id){
   else ns.style.display='none';
 }
 
+// ─── Carousel engine (multi-instance) ────────────────────────────────────────
+function renderCarouselHtml(cid,images,name){
+  carouselState[cid]={images:[...images],idx:0};
+  const show=images.length>1;
+  return`${name?`<div class="carousel-title">${esc(name)}</div>`:''}
+  <div class="carousel-wrap" id="cw-${cid}">
+    <img class="carousel-img" src="${images[0]}" alt="" onclick="openLightbox(this.src)"/>
+    <button class="carousel-nav prev" onclick="stepCarousel('${cid}',-1)" style="${show?'':'display:none'}">‹</button>
+    <button class="carousel-nav next" onclick="stepCarousel('${cid}',1)" style="${show?'':'display:none'}">›</button>
+    <button class="img-copy-btn" onclick="copyImg(carouselState['${cid}']?.images[carouselState['${cid}']?.idx])">📋 Copiar</button>
+  </div>
+  <div class="carousel-dots" id="cd-${cid}">${images.map((_,i)=>`<button class="carousel-dot${i===0?' active':''}" onclick="goCarousel('${cid}',${i})"></button>`).join('')}</div>`;
+}
+function stepCarousel(cid,d){const s=carouselState[cid];if(!s)return;s.idx=(s.idx+d+s.images.length)%s.images.length;refreshCarousel(cid);}
+function goCarousel(cid,i){const s=carouselState[cid];if(!s)return;s.idx=i;refreshCarousel(cid);}
+function refreshCarousel(cid){
+  const s=carouselState[cid];if(!s)return;
+  const wrap=document.getElementById('cw-'+cid);if(!wrap)return;
+  const img=wrap.querySelector('.carousel-img');if(img)img.src=s.images[s.idx];
+  const dots=document.getElementById('cd-'+cid);
+  if(dots)dots.innerHTML=s.images.map((_,i)=>`<button class="carousel-dot${i===s.idx?' active':''}" onclick="goCarousel('${cid}',${i})"></button>`).join('');
+  const show=s.images.length>1;
+  const prev=wrap.querySelector('.carousel-nav.prev');const next=wrap.querySelector('.carousel-nav.next');
+  if(prev)prev.style.display=show?'':'none';if(next)next.style.display=show?'':'none';
+}
+
 // Constrói o HTML das notas respeitando a ordem dos blocos.
-// Imagens são agrupadas num carrossel injectado onde está o PRIMEIRO bloco de imagem.
 function buildNotesHtml(notes){
   if(!notes)return'';
   let blocks;
   if(Array.isArray(notes))blocks=notes;
   else if(typeof notes==='string'&&notes.trim())blocks=[{type:'text',content:notes}];
   else return'';
-  carouselImages=blocks.filter(b=>b.type==='image'&&b.data).map(b=>b.data);
-  carouselIdx=0;
-  let carouselDone=false;
-  return blocks.map(b=>{
+  // backward compat: legacy image blocks → unnamed carousel
+  const legacyImgs=blocks.filter(b=>b.type==='image'&&b.data).map(b=>b.data);
+  let legacyDone=false;
+  return blocks.map((b,i)=>{
     if(b.type==='text')return`<p class="notes-text-block">${escRaw(b.content||'')}</p>`;
     if(b.type==='image'&&b.data){
-      if(!carouselDone){
-        carouselDone=true;
-        // injector do carrossel na posição correta
-        return`<div class="carousel-wrap" id="notesCarouselWrap">
-          <img id="carouselImg" class="carousel-img" src="${carouselImages[0]}" alt="" onclick="openLightbox(this.src)"/>
-          <button class="carousel-nav prev" id="carouselPrev" onclick="stepCarousel(-1)" style="${carouselImages.length<2?'display:none':''}">‹</button>
-          <button class="carousel-nav next" id="carouselNext" onclick="stepCarousel(1)" style="${carouselImages.length<2?'display:none':''}">›</button>
-          <button class="img-copy-btn" onclick="copyImg(document.getElementById('carouselImg').src)">📋 Copiar</button>
-        </div>
-        <div class="carousel-dots" id="carouselDots">${carouselImages.map((_,i)=>`<button class="carousel-dot${i===0?' active':''}" onclick="goCarousel(${i})"></button>`).join('')}</div>`;
-      }
-      return'';// bloco de imagem seguinte está no carrossel, não repetir
+      if(!legacyDone&&legacyImgs.length){legacyDone=true;return renderCarouselHtml('legacy',legacyImgs,'');}
+      return'';
     }
+    if(b.type==='carousel'&&b.images&&b.images.length)return renderCarouselHtml('c'+i,b.images,b.name||'');
     if(b.type==='url'&&b.url)return`<a href="${esc(b.url)}" target="_blank" rel="noopener" class="notes-url-block">🔗 ${esc(b.label||b.url)}</a><br/>`;
     return'';
   }).join('');
 }
-
-// ─── Carousel ─────────────────────────────────────────────────────────────────
-function refreshCarousel(){
-  const img=document.getElementById('carouselImg');if(!img)return;
-  img.src=carouselImages[carouselIdx];
-  const prev=document.getElementById('carouselPrev');
-  const next=document.getElementById('carouselNext');
-  if(prev)prev.style.display=carouselImages.length>1?'flex':'none';
-  if(next)next.style.display=carouselImages.length>1?'flex':'none';
-  const dots=document.getElementById('carouselDots');
-  if(dots)dots.innerHTML=carouselImages.map((_,i)=>
-    `<button class="carousel-dot${i===carouselIdx?' active':''}" onclick="goCarousel(${i})"></button>`).join('');
-}
-function stepCarousel(d){carouselIdx=(carouselIdx+d+carouselImages.length)%carouselImages.length;refreshCarousel();}
-function goCarousel(i){carouselIdx=i;refreshCarousel();}
 
 function showList(){document.getElementById('view-list').style.display='';document.getElementById('view-detail').classList.remove('active');currentRecipe=null;}
 function editCurrent(){if(currentRecipe)openRecipeModal(currentRecipe);}
@@ -737,22 +750,7 @@ document.addEventListener('paste',async e=>{
 // ─── Photo upload (foto principal) ────────────────────────────────────────────
 function onPhotoSelected(e){
   const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    const img=new Image();
-    img.onload=()=>{
-      const MAX=800;let w=img.width,h=img.height;
-      if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
-      const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
-      canvas.getContext('2d').drawImage(img,0,0,w,h);
-      const compressed=canvas.toDataURL('image/jpeg',.75);
-      document.getElementById('fPhoto').value=compressed;
-      document.getElementById('photoPreview').src=compressed;
-      document.getElementById('photoPreview').style.display='block';
-      document.getElementById('photoRemove').style.display='block';
-      document.getElementById('photoUploadLabel').textContent='Foto seleccionada ✓';
-    };img.src=ev.target.result;
-  };reader.readAsDataURL(file);
+  compressImageFile(file).then(applyRecipePhoto);
 }
 function removePhoto(e){
   e.preventDefault();e.stopPropagation();
@@ -762,7 +760,25 @@ function removePhoto(e){
   document.getElementById('photoUploadLabel').textContent='Clica ou arrasta uma foto aqui';
 }
 
-// ─── Notes block editor ───────────────────────────────────────────────────────
+// ─── Notes block editor (recipe) ─────────────────────────────────────────────
+function carouselEditorHtml(blocks,arr,i,pickFn,rmFn,addFn){
+  const b=blocks[i];
+  return`<div class="notes-block">
+    <div class="notes-block-hdr"><span>🖼️ Carrossel</span><button type="button" onclick="${rmFn}(${i})">✕ Remover</button></div>
+    <input type="text" placeholder="Nome do carrossel (opcional)" value="${esc(b.name||'')}" oninput="${arr}[${i}].name=this.value" style="margin-bottom:8px"/>
+    <div class="carousel-editor-grid">
+      ${(b.images||[]).map((img,j)=>`
+        <div class="carousel-thumb">
+          <div class="img-wrap"><img src="${img}" onclick="${pickFn}At(${i},${j})" title="Clica para trocar"/>
+          <button class="img-copy-btn" onclick="copyImg(${arr}[${i}].images[${j}])">📋</button></div>
+          <button class="carousel-thumb-rm" onclick="${rmFn}Img(${i},${j})">✕</button>
+        </div>`).join('')}
+      <div class="carousel-thumb-add" onclick="${pickFn}(${i})" title="Adicionar foto">+</div>
+    </div>
+    <div class="paste-hint">Ctrl+V para adicionar ao carrossel</div>
+  </div>`;
+}
+
 function renderNotesEditor(){
   document.getElementById('notesBlockList').innerHTML=notesBlocks.map((b,i)=>{
     if(b.type==='text')return`
@@ -780,6 +796,7 @@ function renderNotesEditor(){
           :`<div class="photo-upload-area" onclick="pickNotesPhoto(${i})">Clica para adicionar foto</div>
             <div class="paste-hint">Ctrl+V para colar</div>`}
       </div>`;
+    if(b.type==='carousel')return carouselEditorHtml(notesBlocks,'notesBlocks',i,'pickNotesCarouselPhoto','removeNotesBlock','addNotesBlock');
     if(b.type==='url')return`
       <div class="notes-block">
         <div class="notes-block-hdr"><span>🔗 URL</span><button type="button" onclick="removeNotesBlock(${i})">✕ Remover</button></div>
@@ -794,29 +811,29 @@ function addNotesBlock(type){
   if(type==='text')notesBlocks.push({type:'text',content:''});
   else if(type==='image')notesBlocks.push({type:'image',data:null});
   else if(type==='url')notesBlocks.push({type:'url',url:'',label:''});
+  else if(type==='carousel')notesBlocks.push({type:'carousel',name:'',images:[]});
   renderNotesEditor();
 }
 function removeNotesBlock(i){notesBlocks.splice(i,1);renderNotesEditor();}
+function removeNotesBlockImg(blockIdx,imgIdx){notesBlocks[blockIdx].images.splice(imgIdx,1);renderNotesEditor();}
 function pickNotesPhoto(i){
-  notesPhotoTargetIdx=i;
   pasteImageTarget=dataUrl=>{notesBlocks[i].data=dataUrl;renderNotesEditor();};
+  document.getElementById('notesPhotoInput').value='';
+  document.getElementById('notesPhotoInput').click();
+}
+function pickNotesCarouselPhoto(blockIdx){
+  pasteImageTarget=dataUrl=>{notesBlocks[blockIdx].images.push(dataUrl);renderNotesEditor();};
+  document.getElementById('notesPhotoInput').value='';
+  document.getElementById('notesPhotoInput').click();
+}
+function pickNotesCarouselPhotoAt(blockIdx,imgIdx){
+  pasteImageTarget=dataUrl=>{notesBlocks[blockIdx].images[imgIdx]=dataUrl;renderNotesEditor();};
   document.getElementById('notesPhotoInput').value='';
   document.getElementById('notesPhotoInput').click();
 }
 function onNotesPhotoSelected(e){
   const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    const img=new Image();
-    img.onload=()=>{
-      const MAX=800;let w=img.width,h=img.height;
-      if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
-      const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
-      canvas.getContext('2d').drawImage(img,0,0,w,h);
-      notesBlocks[notesPhotoTargetIdx].data=canvas.toDataURL('image/jpeg',.75);
-      renderNotesEditor();
-    };img.src=ev.target.result;
-  };reader.readAsDataURL(file);
+  compressImageFile(file).then(dataUrl=>{if(pasteImageTarget)pasteImageTarget(dataUrl);});
 }
 function loadNotesIntoEditor(notes){
   if(!notes)notesBlocks=[];
@@ -1032,7 +1049,7 @@ function renderNotesList(){
   }).join('')}</div>`;
 }
 
-// ─── Note block editor ────────────────────────────────────────────────────────
+// ─── Note block editor (general notes) ───────────────────────────────────────
 function renderNoteEditor(){
   document.getElementById('noteBlockList').innerHTML=noteBlocks.map((b,i)=>{
     if(b.type==='text')return`
@@ -1050,6 +1067,7 @@ function renderNoteEditor(){
           :`<div class="photo-upload-area" onclick="pickNotePhoto(${i})">Clica para adicionar foto</div>
             <div class="paste-hint">Ctrl+V para colar</div>`}
       </div>`;
+    if(b.type==='carousel')return carouselEditorHtml(noteBlocks,'noteBlocks',i,'pickNoteCarouselPhoto','removeNoteBlock','addNoteBlock');
     if(b.type==='url')return`
       <div class="notes-block">
         <div class="notes-block-hdr"><span>🔗 URL</span><button type="button" onclick="removeNoteBlock(${i})">✕ Remover</button></div>
@@ -1064,29 +1082,29 @@ function addNoteBlock(type){
   if(type==='text')noteBlocks.push({type:'text',content:''});
   else if(type==='image')noteBlocks.push({type:'image',data:null});
   else if(type==='url')noteBlocks.push({type:'url',url:'',label:''});
+  else if(type==='carousel')noteBlocks.push({type:'carousel',name:'',images:[]});
   renderNoteEditor();
 }
 function removeNoteBlock(i){noteBlocks.splice(i,1);renderNoteEditor();}
+function removeNoteBlockImg(blockIdx,imgIdx){noteBlocks[blockIdx].images.splice(imgIdx,1);renderNoteEditor();}
 function pickNotePhoto(i){
-  notePhotoTargetIdx=i;
   pasteImageTarget=dataUrl=>{noteBlocks[i].data=dataUrl;renderNoteEditor();};
+  document.getElementById('notePhotoInput').value='';
+  document.getElementById('notePhotoInput').click();
+}
+function pickNoteCarouselPhoto(blockIdx){
+  pasteImageTarget=dataUrl=>{noteBlocks[blockIdx].images.push(dataUrl);renderNoteEditor();};
+  document.getElementById('notePhotoInput').value='';
+  document.getElementById('notePhotoInput').click();
+}
+function pickNoteCarouselPhotoAt(blockIdx,imgIdx){
+  pasteImageTarget=dataUrl=>{noteBlocks[blockIdx].images[imgIdx]=dataUrl;renderNoteEditor();};
   document.getElementById('notePhotoInput').value='';
   document.getElementById('notePhotoInput').click();
 }
 function onNotePhotoSelected(e){
   const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    const img=new Image();
-    img.onload=()=>{
-      const MAX=800;let w=img.width,h=img.height;
-      if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
-      const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
-      canvas.getContext('2d').drawImage(img,0,0,w,h);
-      noteBlocks[notePhotoTargetIdx].data=canvas.toDataURL('image/jpeg',.75);
-      renderNoteEditor();
-    };img.src=ev.target.result;
-  };reader.readAsDataURL(file);
+  compressImageFile(file).then(dataUrl=>{if(pasteImageTarget)pasteImageTarget(dataUrl);});
 }
 
 // ─── Note modal ───────────────────────────────────────────────────────────────
