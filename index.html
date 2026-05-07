@@ -164,6 +164,12 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
 .note-card .note-date{font-size:11px;color:var(--muted);}
 .note-card .note-has-media{font-size:11px;color:var(--teal);margin-top:4px;}
 
+/* ── Image copy/paste overlay ───────────────────────────────────── */
+.img-wrap{position:relative;display:block;}
+.img-copy-btn{position:absolute;top:6px;right:6px;background:rgba(255,255,255,.88);border:none;border-radius:6px;padding:3px 9px;font-size:12px;cursor:pointer;opacity:0;transition:opacity .15s;box-shadow:0 1px 4px rgba(0,0,0,.2);z-index:10;}
+.img-wrap:hover .img-copy-btn,.carousel-wrap:hover .img-copy-btn{opacity:1;}
+.paste-hint{font-size:11px;color:var(--muted);margin-top:4px;text-align:center;}
+
 /* ── Lightbox ───────────────────────────────────────────────────── */
 #lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:500;align-items:center;justify-content:center;cursor:zoom-out;}
 #lightbox.open{display:flex;}
@@ -221,7 +227,10 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
       <button class="btn btn-teal" onclick="editCurrent()">✏️ Editar</button>
       <button class="btn btn-danger" onclick="deleteCurrent()">🗑 Apagar</button>
     </div>
-    <img id="detailPhoto" class="detail-photo" style="display:none" src="" alt="foto" onclick="openLightbox(this.src)"/>
+    <div class="img-wrap" id="detailPhotoWrap" style="display:none">
+      <img id="detailPhoto" class="detail-photo" src="" alt="foto" onclick="openLightbox(this.src)"/>
+      <button class="img-copy-btn" onclick="copyImg(document.getElementById('detailPhoto').src)">📋 Copiar</button>
+    </div>
     <div class="detail-header">
       <div id="detailEmoji" class="detail-emoji">🍽️</div>
       <div><h2 id="detailName" style="font-family:Georgia,serif;color:var(--teal)"></h2><div class="detail-meta" id="detailMeta"></div></div>
@@ -318,8 +327,8 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
 
     <div class="form-group">
       <label>📷 Foto Principal</label>
-      <label class="photo-upload-area" for="fPhotoInput">
-        <span id="photoUploadLabel">Clica ou arrasta uma foto aqui</span>
+      <label class="photo-upload-area" for="fPhotoInput" onclick="pasteImageTarget=applyRecipePhoto">
+        <span id="photoUploadLabel">Clica, arrasta ou cola (Ctrl+V)</span>
         <img id="photoPreview" class="photo-preview" src="" alt="preview"/>
         <div id="photoRemove" class="photo-remove" onclick="removePhoto(event)">✕ Remover foto</div>
       </label>
@@ -596,7 +605,8 @@ function showDetail(id){
   document.getElementById('view-list').style.display='none';
   document.getElementById('view-detail').classList.add('active');
   const dp=document.getElementById('detailPhoto');
-  if(currentRecipe.photo){dp.src=currentRecipe.photo;dp.style.display='block';}else dp.style.display='none';
+  const dpw=document.getElementById('detailPhotoWrap');
+  if(currentRecipe.photo){dp.src=currentRecipe.photo;dpw.style.display='block';}else dpw.style.display='none';
   document.getElementById('detailEmoji').textContent=currentRecipe.emoji||'🍽️';
   document.getElementById('detailEmoji').style.display=currentRecipe.photo?'none':'block';
   document.getElementById('detailName').textContent=currentRecipe.name;
@@ -635,6 +645,7 @@ function buildNotesHtml(notes){
           <img id="carouselImg" class="carousel-img" src="${carouselImages[0]}" alt="" onclick="openLightbox(this.src)"/>
           <button class="carousel-nav prev" id="carouselPrev" onclick="stepCarousel(-1)" style="${carouselImages.length<2?'display:none':''}">‹</button>
           <button class="carousel-nav next" id="carouselNext" onclick="stepCarousel(1)" style="${carouselImages.length<2?'display:none':''}">›</button>
+          <button class="img-copy-btn" onclick="copyImg(document.getElementById('carouselImg').src)">📋 Copiar</button>
         </div>
         <div class="carousel-dots" id="carouselDots">${carouselImages.map((_,i)=>`<button class="carousel-dot${i===0?' active':''}" onclick="goCarousel(${i})"></button>`).join('')}</div>`;
       }
@@ -662,6 +673,66 @@ function goCarousel(i){carouselIdx=i;refreshCarousel();}
 
 function showList(){document.getElementById('view-list').style.display='';document.getElementById('view-detail').classList.remove('active');currentRecipe=null;}
 function editCurrent(){if(currentRecipe)openRecipeModal(currentRecipe);}
+
+// ─── Image copy / paste helpers ───────────────────────────────────────────────
+let pasteImageTarget=null;
+
+function compressImageFile(file){
+  return new Promise(resolve=>{
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const img=new Image();
+      img.onload=()=>{
+        const MAX=800;let w=img.width,h=img.height;
+        if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
+        const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg',.75));
+      };img.src=ev.target.result;
+    };reader.readAsDataURL(file);
+  });
+}
+
+async function copyImg(dataUrl){
+  if(!dataUrl)return;
+  try{
+    const res=await fetch(dataUrl);const blob=await res.blob();
+    await navigator.clipboard.write([new ClipboardItem({[blob.type]:blob})]);
+  }catch{
+    // fallback: convert to PNG blob
+    try{
+      const img=new Image();img.src=dataUrl;
+      await new Promise(r=>{img.onload=r;});
+      const c=document.createElement('canvas');c.width=img.width;c.height=img.height;
+      c.getContext('2d').drawImage(img,0,0);
+      await new Promise(r=>c.toBlob(async b=>{
+        await navigator.clipboard.write([new ClipboardItem({'image/png':b})]);r();
+      },'image/png'));
+    }catch(e){alert('Não foi possível copiar a imagem: '+e.message);}
+  }
+}
+
+// handler para a foto principal da receita
+function applyRecipePhoto(dataUrl){
+  document.getElementById('fPhoto').value=dataUrl;
+  document.getElementById('photoPreview').src=dataUrl;
+  document.getElementById('photoPreview').style.display='block';
+  document.getElementById('photoRemove').style.display='block';
+  document.getElementById('photoUploadLabel').textContent='Foto colada ✓';
+}
+
+// paste global: envia para o alvo ativo
+document.addEventListener('paste',async e=>{
+  const items=e.clipboardData?.items;if(!items)return;
+  for(const item of items){
+    if(!item.type.startsWith('image/'))continue;
+    const file=item.getAsFile();if(!file)continue;
+    e.preventDefault();
+    const dataUrl=await compressImageFile(file);
+    if(pasteImageTarget)pasteImageTarget(dataUrl);
+    break;
+  }
+});
 
 // ─── Photo upload (foto principal) ────────────────────────────────────────────
 function onPhotoSelected(e){
@@ -703,9 +774,11 @@ function renderNotesEditor(){
       <div class="notes-block">
         <div class="notes-block-hdr"><span>📷 Foto</span><button type="button" onclick="removeNotesBlock(${i})">✕ Remover</button></div>
         ${b.data
-          ?`<img src="${b.data}" style="max-width:100%;border-radius:8px;margin-bottom:6px;cursor:pointer" onclick="pickNotesPhoto(${i})" title="Clica para trocar"/>
-            <div style="font-size:11px;color:var(--muted)">Clica na foto para trocar</div>`
-          :`<div class="photo-upload-area" onclick="pickNotesPhoto(${i})">Clica para adicionar foto</div>`}
+          ?`<div class="img-wrap"><img src="${b.data}" style="max-width:100%;border-radius:8px;margin-bottom:6px;cursor:pointer" onclick="pickNotesPhoto(${i})" title="Clica para trocar"/>
+            <button class="img-copy-btn" onclick="copyImg(notesBlocks[${i}].data)">📋 Copiar</button></div>
+            <div style="font-size:11px;color:var(--muted)">Clica para trocar · Ctrl+V para colar</div>`
+          :`<div class="photo-upload-area" onclick="pickNotesPhoto(${i})">Clica para adicionar foto</div>
+            <div class="paste-hint">Ctrl+V para colar</div>`}
       </div>`;
     if(b.type==='url')return`
       <div class="notes-block">
@@ -726,6 +799,7 @@ function addNotesBlock(type){
 function removeNotesBlock(i){notesBlocks.splice(i,1);renderNotesEditor();}
 function pickNotesPhoto(i){
   notesPhotoTargetIdx=i;
+  pasteImageTarget=dataUrl=>{notesBlocks[i].data=dataUrl;renderNotesEditor();};
   document.getElementById('notesPhotoInput').value='';
   document.getElementById('notesPhotoInput').click();
 }
@@ -779,6 +853,7 @@ function openRecipeModal(r=null){
   }
   loadNotesIntoEditor(r?r.notes:null);
   populateCatDatalist();
+  pasteImageTarget=applyRecipePhoto;
   openModal('recipeOverlay');
 }
 
@@ -969,9 +1044,11 @@ function renderNoteEditor(){
       <div class="notes-block">
         <div class="notes-block-hdr"><span>📷 Foto</span><button type="button" onclick="removeNoteBlock(${i})">✕ Remover</button></div>
         ${b.data
-          ?`<img src="${b.data}" style="max-width:100%;border-radius:8px;margin-bottom:6px;cursor:pointer" onclick="pickNotePhoto(${i})" title="Clica para trocar"/>
-            <div style="font-size:11px;color:var(--muted)">Clica na foto para trocar</div>`
-          :`<div class="photo-upload-area" onclick="pickNotePhoto(${i})">Clica para adicionar foto</div>`}
+          ?`<div class="img-wrap"><img src="${b.data}" style="max-width:100%;border-radius:8px;margin-bottom:6px;cursor:pointer" onclick="pickNotePhoto(${i})" title="Clica para trocar"/>
+            <button class="img-copy-btn" onclick="copyImg(noteBlocks[${i}].data)">📋 Copiar</button></div>
+            <div style="font-size:11px;color:var(--muted)">Clica para trocar · Ctrl+V para colar</div>`
+          :`<div class="photo-upload-area" onclick="pickNotePhoto(${i})">Clica para adicionar foto</div>
+            <div class="paste-hint">Ctrl+V para colar</div>`}
       </div>`;
     if(b.type==='url')return`
       <div class="notes-block">
@@ -992,6 +1069,7 @@ function addNoteBlock(type){
 function removeNoteBlock(i){noteBlocks.splice(i,1);renderNoteEditor();}
 function pickNotePhoto(i){
   notePhotoTargetIdx=i;
+  pasteImageTarget=dataUrl=>{noteBlocks[i].data=dataUrl;renderNoteEditor();};
   document.getElementById('notePhotoInput').value='';
   document.getElementById('notePhotoInput').click();
 }
@@ -1019,6 +1097,13 @@ function openNoteModal(n=null){
   document.getElementById('noteDeleteBtn').style.display=n?'':'none';
   noteBlocks=n&&n.blocks?(Array.isArray(n.blocks)?JSON.parse(JSON.stringify(n.blocks)):[{type:'text',content:n.blocks}]):[];
   renderNoteEditor();
+  // paste numa nota nova adiciona bloco de imagem; numa existente substitui o último bloco de imagem ou adiciona
+  pasteImageTarget=dataUrl=>{
+    const last=noteBlocks.map((b,i)=>({b,i})).reverse().find(x=>x.b.type==='image');
+    if(last&&!last.b.data){noteBlocks[last.i].data=dataUrl;}
+    else{noteBlocks.push({type:'image',data:dataUrl});}
+    renderNoteEditor();
+  };
   openModal('noteOverlay');
   setTimeout(()=>document.getElementById('nTitle').focus(),120);
 }
