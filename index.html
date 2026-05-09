@@ -241,6 +241,7 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
 <div class="tabs">
   <div class="tab active" onclick="showTab('receitas')">📖 Receitas</div>
   <div class="tab" onclick="showTab('refeicoes')">🥗 Refeições</div>
+  <div class="tab" onclick="showTab('produtos')">🛒 Produtos</div>
   <div class="tab" onclick="showTab('notas')">📓 Notas</div>
 </div>
 
@@ -292,6 +293,47 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
 </div>
 
 <!-- ═══ NOTAS ═══ -->
+<!-- ═══ PRODUTOS ═══ -->
+<div id="page-produtos" class="page">
+  <div class="toolbar">
+    <input id="prodSearchInput" class="search-box" placeholder="🔍 Pesquisar produtos..." oninput="renderProducts()"/>
+    <select id="prodFilterCat" class="filter" onchange="renderProducts()">
+      <option value="">Todas as categorias</option>
+      <option>Lacticínios</option><option>Cereais</option><option>Proteínas</option>
+      <option>Vegetais</option><option>Frutas</option><option>Snacks</option>
+      <option>Bebidas</option><option>Higiene</option><option>Limpeza</option><option>Outro</option>
+    </select>
+    <button class="btn btn-primary" onclick="openNewProductModal()">+ Novo Produto</button>
+  </div>
+  <div id="productsContainer"></div>
+</div>
+
+<!-- ═══ MODAL: PRODUTO ═══ -->
+<div id="productModal" class="overlay">
+  <div class="modal" style="max-width:480px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+      <h2 id="productModalTitle" style="margin-bottom:0;flex:1">Produto</h2>
+      <button id="productDeleteBtn" class="btn btn-danger btn-sm" onclick="deleteCurrentProduct()" style="display:none">🗑 Apagar</button>
+    </div>
+    <!-- VIEW -->
+    <div id="productViewMode">
+      <div id="productViewContent"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('productModal')">Fechar</button>
+        <button class="btn btn-primary" onclick="productSwitchToEdit()">✏️ Editar</button>
+      </div>
+    </div>
+    <!-- EDIT / ADD -->
+    <div id="productEditMode" style="display:none">
+      <div id="productEditContent"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="productCancelEdit()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveProduct()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="page-notas" class="page">
   <div class="toolbar">
     <input id="notesSearch" class="search-box" placeholder="🔍 Pesquisar notas..." oninput="renderNotesList()"/>
@@ -601,7 +643,7 @@ function populateCatDatalist(){
 }
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
-const TAB_ORDER=['receitas','refeicoes','notas'];
+const TAB_ORDER=['receitas','refeicoes','produtos','notas'];
 function showTab(t){
   document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',i===TAB_ORDER.indexOf(t)));
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
