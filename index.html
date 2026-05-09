@@ -1147,44 +1147,49 @@ function clearMealPhoto(){
 // onItemRecipeSel removed — replaced by addItemRecipe/removeItemRecipe
 
 async function saveItem(){
-  const name=document.getElementById('ieName').value.trim();
-  if(!name){alert('O nome é obrigatório.');document.getElementById('ieName').focus();return;}
-  const ingredients=document.getElementById('ieIngr').value.trim()||null;
-  const notes=document.getElementById('ieNotes').value.trim()||null;
-  const photo=document.getElementById('ieMealPhoto').value||null;
+  const nameEl=document.getElementById('ieName');
+  const name=(nameEl?.value||'').trim();
+  if(!name){alert('O nome é obrigatório.');nameEl?.focus();return;}
   const btn=document.querySelector('#itemModal #itemEditMode .btn-primary');
   const orig=btn?.textContent;
   if(btn){btn.disabled=true;btn.textContent='⏳ A guardar...';}
   const slot=currentSlot;
-  const recipe_ids=itemRecipeIds.length?[...itemRecipeIds]:null;
-  const recipe_id=itemRecipeIds[0]||null;
-  const body={name,recipe_id,recipe_ids,ingredients,photo,notes};
+  // gera id local antecipado (para o caso de fallback offline)
+  const localId=currentEntryId||(crypto.randomUUID?.()??('local-'+Date.now()));
   try{
-    if(currentEntryId){
-      const u=await apiFetch(`/refeicoes/${encodeURIComponent(slot)}/${currentEntryId}`,{method:'PUT',body:JSON.stringify(body)});
-      const i=(refeicoes[slot]||[]).findIndex(e=>e.id===currentEntryId);
-      if(i>=0)refeicoes[slot][i]=u;
-    }else{
-      const c2=await apiFetch(`/refeicoes/${encodeURIComponent(slot)}`,{method:'POST',body:JSON.stringify(body)});
-      if(!refeicoes[slot])refeicoes[slot]=[];
-      refeicoes[slot].push(c2);
-      currentEntryId=c2.id;
-    }
-  }catch{
-    if(currentEntryId){
-      const i=(refeicoes[slot]||[]).findIndex(e=>e.id===currentEntryId);
-      if(i>=0)refeicoes[slot][i]={...refeicoes[slot][i],...body};
-    }else{
-      if(!refeicoes[slot])refeicoes[slot]=[];
-      const newE={id:crypto.randomUUID(),...body};
-      refeicoes[slot].push(newE);
-      currentEntryId=newE.id;
+    const ingredients=document.getElementById('ieIngr')?.value.trim()||null;
+    const notes=document.getElementById('ieNotes')?.value.trim()||null;
+    const photo=document.getElementById('ieMealPhoto')?.value||null;
+    const recipe_ids=(itemRecipeIds||[]).length?[...(itemRecipeIds||[])]:null;
+    const recipe_id=(itemRecipeIds||[])[0]||null;
+    const body={name,recipe_id,recipe_ids,ingredients,photo,notes};
+    try{
+      if(currentEntryId){
+        const u=await apiFetch(`/refeicoes/${encodeURIComponent(slot)}/${currentEntryId}`,{method:'PUT',body:JSON.stringify(body)});
+        const i=(refeicoes[slot]||[]).findIndex(e=>e.id===currentEntryId);
+        if(i>=0)refeicoes[slot][i]={...refeicoes[slot][i],...body,...(u||{})};
+      }else{
+        let saved=null;
+        try{
+          saved=await apiFetch(`/refeicoes/${encodeURIComponent(slot)}`,{method:'POST',body:JSON.stringify(body)});
+        }catch{
+          saved={id:localId,...body};
+        }
+        if(!refeicoes[slot])refeicoes[slot]=[];
+        refeicoes[slot].push(saved);
+        currentEntryId=saved.id;
+      }
+    }catch{
+      // fallback offline para PUT
+      if(currentEntryId){
+        const i=(refeicoes[slot]||[]).findIndex(e=>e.id===currentEntryId);
+        if(i>=0)refeicoes[slot][i]={...refeicoes[slot][i],...body};
+      }
     }
   }finally{
     if(btn){btn.disabled=false;btn.textContent=orig;}
   }
   saveLocal();renderSlots();
-  // show view of saved item
   openItemModal(slot,currentEntryId);
 }
 
