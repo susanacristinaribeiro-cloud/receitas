@@ -411,6 +411,7 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
       <div class="modal-footer">
         <button class="btn btn-danger btn-sm" onclick="deleteCurrentItem()" style="margin-right:auto">🗑 Apagar</button>
         <button class="btn btn-ghost" onclick="closeModal('itemModal')">Fechar</button>
+        <button class="btn btn-ghost" id="itemPdfBtn" onclick="exportMealPDF(currentSlot,currentEntryId,this)">📄 PDF</button>
         <button class="btn btn-primary" onclick="itemSwitchToEdit()">✏️ Editar</button>
       </div>
     </div>
@@ -981,6 +982,11 @@ function _renderItemView(e){
   const r=e.recipe_id?recipes.find(x=>x.id===e.recipe_id):null;
   const recipeIngr=r?(r.ingredients||'').trim():'';
   const freeIngr=(e.ingredients||'').trim();
+  const photoHtml=e.photo?`
+    <div class="img-wrap" style="margin-bottom:10px">
+      <img src="${e.photo}" class="detail-photo" onclick="openLightbox(this.src)" style="cursor:pointer"/>
+      <button class="img-copy-btn" onclick="copyImg(document.querySelector('#itemViewContent img').src)">📋 Copiar</button>
+    </div>`:'';
   const recipeBox=r?`
     <div class="sv-recipe-box">
       <div class="sv-recipe-label">${r.emoji||'🍽️'} Receita: ${esc(r.name)}</div>
@@ -992,6 +998,7 @@ function _renderItemView(e){
       <div class="sv-ingr">${esc(freeIngr)}</div>
     </div>`:'';
   return`<div class="sv-group">
+    ${photoHtml}
     <div class="sv-item"><span class="sv-name">${esc(e.name)}</span></div>
     ${recipeBox}${ingrBox}
   </div>`;
@@ -1013,7 +1020,7 @@ function openAddItemModal(slot){
   document.getElementById('itemModalSlotTitle').textContent=_slotLabel(slot);
   document.getElementById('itemViewMode').style.display='none';
   document.getElementById('itemEditMode').style.display='';
-  _renderItemEditForm({name:'',recipe_id:'',ingredients:''});
+  _renderItemEditForm({name:'',recipe_id:'',ingredients:'',photo:''});
   openModal('itemModal');
   setTimeout(()=>document.getElementById('ieName')?.focus(),100);
 }
@@ -1023,7 +1030,7 @@ function itemSwitchToEdit(){
   if(!e)return;
   document.getElementById('itemViewMode').style.display='none';
   document.getElementById('itemEditMode').style.display='';
-  _renderItemEditForm({name:e.name,recipe_id:e.recipe_id||'',ingredients:e.ingredients||''});
+  _renderItemEditForm({name:e.name,recipe_id:e.recipe_id||'',ingredients:e.ingredients||'',photo:e.photo||''});
 }
 
 function itemCancelEdit(){
@@ -1033,7 +1040,7 @@ function itemCancelEdit(){
   }else{closeModal('itemModal');}
 }
 
-function _renderItemEditForm({name,recipe_id,ingredients}){
+function _renderItemEditForm({name,recipe_id,ingredients,photo}){
   const recOpts=recipes.map(r=>`<option value="${r.id}">${r.emoji||'🍽️'} ${esc(r.name)}</option>`).join('');
   document.getElementById('itemEditContent').innerHTML=`
     <div class="form-group">
@@ -1049,8 +1056,39 @@ function _renderItemEditForm({name,recipe_id,ingredients}){
     <div class="form-group">
       <label>Ingredientes (opcional)</label>
       <textarea id="ieIngr" rows="3" placeholder="10g Nutela&#10;Iogurte Magro&#10;1/2 fruta">${esc(ingredients)}</textarea>
+    </div>
+    <div class="form-group">
+      <label>Foto (opcional)</label>
+      <label class="photo-upload-area" for="ieMealPhotoInput" onclick="pasteImageTarget=applyMealPhoto" style="cursor:pointer">
+        <span id="ieMealPhotoHint" ${photo?'style="display:none"':''}>📷 Clica, arrasta ou cola (Ctrl+V)</span>
+        <img id="ieMealPhotoPreview" class="photo-preview" src="${photo||''}" style="${photo?'display:block':'display:none'}"/>
+      </label>
+      <input type="file" id="ieMealPhotoInput" accept="image/*" style="display:none" onchange="onMealPhotoSelected(event)"/>
+      <input type="hidden" id="ieMealPhoto" value="${photo||''}"/>
+      ${photo?`<button type="button" class="btn btn-ghost" style="margin-top:4px;font-size:12px" onclick="clearMealPhoto()">✕ Remover foto</button>`:''}
     </div>`;
   document.getElementById('ieRecipe').value=recipe_id||'';
+  pasteImageTarget=applyMealPhoto;
+}
+
+function applyMealPhoto(dataUrl){
+  document.getElementById('ieMealPhoto').value=dataUrl;
+  document.getElementById('ieMealPhotoPreview').src=dataUrl;
+  document.getElementById('ieMealPhotoPreview').style.display='block';
+  const hint=document.getElementById('ieMealPhotoHint');
+  if(hint)hint.style.display='none';
+}
+function onMealPhotoSelected(e){
+  const file=e.target.files[0];if(!file)return;
+  compressImageFile(file).then(applyMealPhoto);
+}
+function clearMealPhoto(){
+  document.getElementById('ieMealPhoto').value='';
+  document.getElementById('ieMealPhotoInput').value='';
+  const pr=document.getElementById('ieMealPhotoPreview');
+  if(pr){pr.src='';pr.style.display='none';}
+  const hint=document.getElementById('ieMealPhotoHint');
+  if(hint)hint.style.display='';
 }
 
 function onItemRecipeSel(recipeId){
@@ -1065,11 +1103,12 @@ async function saveItem(){
   if(!name){alert('O nome é obrigatório.');document.getElementById('ieName').focus();return;}
   const recipe_id=document.getElementById('ieRecipe').value||null;
   const ingredients=document.getElementById('ieIngr').value.trim()||null;
+  const photo=document.getElementById('ieMealPhoto').value||null;
   const btn=document.querySelector('#itemModal #itemEditMode .btn-primary');
   const orig=btn?.textContent;
   if(btn){btn.disabled=true;btn.textContent='⏳ A guardar...';}
   const slot=currentSlot;
-  const body={name,recipe_id,ingredients};
+  const body={name,recipe_id,ingredients,photo};
   try{
     if(currentEntryId){
       const u=await apiFetch(`/refeicoes/${encodeURIComponent(slot)}/${currentEntryId}`,{method:'PUT',body:JSON.stringify(body)});
@@ -1576,6 +1615,64 @@ async function pdDrawRecipe(doc,recipe){
   pdBorderStrip(doc,ph-10,pw);
   doc.setFontSize(7.5);doc.setTextColor(...PC.muted);doc.setFont('helvetica','italic');
   doc.text('As Minhas Receitas · de Susana',pw/2,ph-4,{align:'center'});
+}
+
+/* ── export meal PDF ── */
+async function pdDrawMeal(doc,entry){
+  const pw=210,ph=297,m=15;let y=m;
+  doc.setFillColor(...PC.cream);doc.rect(0,0,pw,ph,'F');
+  // photo
+  if(entry.photo){
+    try{
+      const nat=await imgNaturalSize(entry.photo);
+      const fi=fitImg(nat.w,nat.h,pw-m*2,80,m,y);
+      doc.addImage(entry.photo,imgFmt(entry.photo),fi.x,fi.y,fi.w,fi.h,'','MEDIUM');
+      y+=fi.h+4;
+    }catch{pdBorderStrip(doc,y+6,pw);y+=13;}
+  }else{pdBorderStrip(doc,y+6,pw);y+=13;}
+  // slot label
+  const s=SLOTS.find(x=>x.key===entry._slot);
+  if(s){
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...PC.muted);
+    doc.text(stripEmoji(s.label).toUpperCase(),m,y);y+=6;
+  }
+  // name
+  doc.setFont('helvetica','bold');doc.setFontSize(20);doc.setTextColor(...PC.teal);
+  const nm=doc.splitTextToSize(stripEmoji(entry.name),pw-m*2);
+  doc.text(nm,m,y);y+=nm.length*9+4;
+  doc.setDrawColor(...PC.border);doc.setLineWidth(.3);doc.line(m,y,pw-m,y);y+=6;
+  // linked recipe
+  const r=entry.recipe_id?recipes.find(x=>x.id===entry.recipe_id):null;
+  if(r){
+    y=needY(doc,y,15,entry.name);
+    y=pdHeading(doc,`RECEITA: ${stripEmoji(r.name).toUpperCase()}`,y,m);
+    if(r.ingredients)y=pdBody(doc,r.ingredients,y,pw,m);
+    y+=4;
+  }
+  // free ingredients
+  if(entry.ingredients){
+    y=needY(doc,y,15,entry.name);
+    y=pdHeading(doc,'INGREDIENTES',y,m);
+    y=pdBody(doc,entry.ingredients,y,pw,m);y+=4;
+  }
+  // footer
+  pdBorderStrip(doc,ph-10,pw);
+  doc.setFontSize(7.5);doc.setTextColor(...PC.muted);doc.setFont('helvetica','italic');
+  doc.text('As Minhas Receitas · de Susana',pw/2,ph-4,{align:'center'});
+}
+
+async function exportMealPDF(slot,entryId,btn){
+  const entry=(refeicoes[slot]||[]).find(x=>x.id===entryId);
+  if(!entry)return;
+  const orig=btn?btn.textContent:'';
+  if(btn){btn.textContent='⏳';btn.disabled=true;}
+  try{
+    await loadJsPDF();
+    const{jsPDF}=window.jspdf;
+    const doc=new jsPDF({unit:'mm',format:'a4'});
+    await pdDrawMeal(doc,{...entry,_slot:slot});
+    doc.save(`${stripEmoji(entry.name)||'refeicao'}.pdf`);
+  }finally{if(btn){btn.textContent=orig;btn.disabled=false;}}
 }
 
 /* ── export single recipe ── */
