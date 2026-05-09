@@ -1031,9 +1031,9 @@ function _renderItemView(e){
     </div>`;
   }).join('');
   const notesBox=(e.notes||'').trim()?`
-    <div class="sv-notes-box">
-      <div class="sv-notes-label">Notas</div>
-      ${esc((e.notes||'').trim())}
+    <div class="sv-recipe-box" style="border-color:var(--border);background:#f5f3ee">
+      <div class="sv-recipe-label" style="color:var(--muted)">📝 Notas</div>
+      <div class="sv-ingr">${esc((e.notes||'').trim())}</div>
     </div>`:'';
   return`<div class="sv-group">
     ${photoHtml}
