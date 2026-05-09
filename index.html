@@ -1030,10 +1030,15 @@ function _renderItemView(e){
       ${ri?`<div class="sv-ingr">${esc(ri)}</div>`:''}
     </div>`;
   }).join('');
+  const notesBox=(e.notes||'').trim()?`
+    <div class="sv-notes-box">
+      <div class="sv-notes-label">Notas</div>
+      ${esc((e.notes||'').trim())}
+    </div>`:'';
   return`<div class="sv-group">
     ${photoHtml}
     <div class="sv-item"><span class="sv-name">${esc(e.name)}</span></div>
-    ${ingrBox}${recipeBoxes}
+    ${ingrBox}${recipeBoxes}${notesBox}
   </div>`;
 }
 
@@ -1055,7 +1060,7 @@ function openAddItemModal(slot){
   document.getElementById('itemModalSlotTitle').textContent=_slotLabel(slot);
   document.getElementById('itemViewMode').style.display='none';
   document.getElementById('itemEditMode').style.display='';
-  _renderItemEditForm({name:'',recipe_ids:[],ingredients:'',photo:''});
+  _renderItemEditForm({name:'',recipe_ids:[],ingredients:'',photo:'',notes:''});
   const delBtn=document.getElementById('itemDeleteBtn');
   if(delBtn)delBtn.style.display='none';
   openModal('itemModal');
@@ -1068,7 +1073,7 @@ function itemSwitchToEdit(){
   document.getElementById('itemViewMode').style.display='none';
   document.getElementById('itemEditMode').style.display='';
   const _db=document.getElementById('itemDeleteBtn');if(_db)_db.style.display='none';
-  _renderItemEditForm({name:e.name,recipe_ids:_entryRecipeIds(e),ingredients:e.ingredients||'',photo:e.photo||''});
+  _renderItemEditForm({name:e.name,recipe_ids:_entryRecipeIds(e),ingredients:e.ingredients||'',photo:e.photo||'',notes:e.notes||''});
 }
 
 function itemCancelEdit(){
@@ -1079,7 +1084,7 @@ function itemCancelEdit(){
   }else{closeModal('itemModal');}
 }
 
-function _renderItemEditForm({name,recipe_ids=[],ingredients,photo}){
+function _renderItemEditForm({name,recipe_ids=[],ingredients,photo,notes=''}){
   itemRecipeIds=[...recipe_ids];
   const recOpts=recipes.map(r=>`<option value="${r.id}">${r.emoji||'🍽️'} ${esc(r.name)}</option>`).join('');
   document.getElementById('itemEditContent').innerHTML=`
@@ -1100,6 +1105,10 @@ function _renderItemEditForm({name,recipe_ids=[],ingredients,photo}){
         </select>
         <button type="button" class="btn btn-ghost" onclick="addItemRecipe(document.getElementById('ieRecipeAdd').value)">＋</button>
       </div>
+    </div>
+    <div class="form-group">
+      <label style="color:var(--muted)">Notas (opcional)</label>
+      <textarea id="ieNotes" class="ie-notes-area" rows="3" placeholder="Dicas, substituições, observações...">${esc(notes)}</textarea>
     </div>
     <div class="form-group">
       <label>Foto (opcional)</label>
@@ -1141,6 +1150,7 @@ async function saveItem(){
   const name=document.getElementById('ieName').value.trim();
   if(!name){alert('O nome é obrigatório.');document.getElementById('ieName').focus();return;}
   const ingredients=document.getElementById('ieIngr').value.trim()||null;
+  const notes=document.getElementById('ieNotes').value.trim()||null;
   const photo=document.getElementById('ieMealPhoto').value||null;
   const btn=document.querySelector('#itemModal #itemEditMode .btn-primary');
   const orig=btn?.textContent;
@@ -1148,7 +1158,7 @@ async function saveItem(){
   const slot=currentSlot;
   const recipe_ids=itemRecipeIds.length?[...itemRecipeIds]:null;
   const recipe_id=itemRecipeIds[0]||null;
-  const body={name,recipe_id,recipe_ids,ingredients,photo};
+  const body={name,recipe_id,recipe_ids,ingredients,photo,notes};
   try{
     if(currentEntryId){
       const u=await apiFetch(`/refeicoes/${encodeURIComponent(slot)}/${currentEntryId}`,{method:'PUT',body:JSON.stringify(body)});
