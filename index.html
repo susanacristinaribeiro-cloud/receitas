@@ -524,6 +524,8 @@ function buildHeaderBot(){
 let recipes=[], refeicoes={}, categories=[], currentRecipe=null;
 let notesBlocks=[], notesPhotoTargetIdx=-1;
 let appNotes=[], noteBlocks=[], notePhotoTargetIdx=-1;
+let products=[];
+let currentProductId=null;
 const carouselState={}; // {cid: {images:[], idx:0}}
 
 const SLOTS=[
@@ -575,14 +577,16 @@ function loadLocal(){
   try{refeicoes=JSON.parse(localStorage.getItem('refeicoes')||'{}');}catch{refeicoes={};}
   try{categories=JSON.parse(localStorage.getItem('categories')||'null')||[...DEFAULT_CATS];}catch{categories=[...DEFAULT_CATS];}
   try{appNotes=JSON.parse(localStorage.getItem('appNotes')||'[]');}catch{appNotes=[];}
+  try{products=JSON.parse(localStorage.getItem('products')||'[]');}catch{products=[];}
 }
 function saveLocal(){
   localStorage.setItem('recipes',JSON.stringify(recipes));
   localStorage.setItem('refeicoes',JSON.stringify(refeicoes));
   localStorage.setItem('categories',JSON.stringify(categories));
   localStorage.setItem('appNotes',JSON.stringify(appNotes));
+  localStorage.setItem('products',JSON.stringify(products));
 }
-function render(){renderRecipes();renderSlots();renderNotesList();populateCatFilter();populateCatDatalist();}
+function render(){renderRecipes();renderSlots();renderProducts();renderNotesList();populateCatFilter();populateCatDatalist();}
 
 function populateCatFilter(){
   const sel=document.getElementById('filterCat');const cur=sel.value;
@@ -1199,6 +1203,204 @@ async function deleteCurrentItem(){
   try{await apiFetch(`/refeicoes/${encodeURIComponent(currentSlot)}/${currentEntryId}`,{method:'DELETE'});}catch{}
   if(refeicoes[currentSlot])refeicoes[currentSlot]=refeicoes[currentSlot].filter(x=>x.id!==currentEntryId);
   saveLocal();renderSlots();closeModal('itemModal');
+}
+
+
+// ─── Produtos ─────────────────────────────────────────────────────────────────
+function productCardHtml(p){return`
+  <div class="recipe-card" onclick="openProductModal('${p.id}')">
+    ${p.photo?`<img class="card-photo" src="${p.photo}" alt="${esc(p.name)}" loading="lazy"/>`
+             :`<div class="card-placeholder">${p.emoji||'🛒'}</div>`}
+    <div class="card-body">
+      <h3>${esc(p.name)}</h3>
+      <div class="meta">
+        ${p.brand?`<span>🏷️ ${esc(p.brand)}</span>`:''}
+        ${p.quantity?`<span>📦 ${esc(p.quantity)}</span>`:''}
+        ${p.category&&p.category!=='Outro'?`<span>${esc(p.category)}</span>`:''}
+      </div>
+    </div>
+  </div>`;}
+
+function renderProducts(){
+  const q=(document.getElementById('prodSearchInput')?.value||'').toLowerCase();
+  const cat=document.getElementById('prodFilterCat')?.value||'';
+  const list=products.filter(p=>{
+    const mq=!q||p.name.toLowerCase().includes(q)||(p.brand||'').toLowerCase().includes(q);
+    const mc=!cat||p.category===cat;
+    return mq&&mc;
+  });
+  const el=document.getElementById('productsContainer');
+  if(!el)return;
+  if(!list.length){
+    el.innerHTML=`<div class="empty"><div class="big">🛒</div><p>${products.length?'Sem resultados.':'Ainda sem produtos. Adiciona o primeiro!'}</p></div>`;
+    return;
+  }
+  el.innerHTML=`<div class="recipes-grid">${list.map(productCardHtml).join('')}</div>`;
+}
+
+function _renderProductView(p){
+  const photoHtml=p.photo?`
+    <div class="img-wrap" style="margin-bottom:10px">
+      <img src="${p.photo}" class="detail-photo" onclick="openLightbox(this.src)" style="cursor:pointer"/>
+      <button class="img-copy-btn" onclick="copyImg(document.querySelector('#productViewContent img').src)">📋 Copiar</button>
+    </div>`:'';
+  const meta=[p.brand?`🏷️ ${esc(p.brand)}`:'', p.quantity?`📦 ${esc(p.quantity)}`:'', p.category?esc(p.category):''].filter(Boolean).join(' &nbsp;·&nbsp; ');
+  const notesBox=(p.notes||'').trim()?`
+    <div class="sv-recipe-box" style="border-color:var(--border);background:#f5f3ee">
+      <div class="sv-recipe-label" style="color:var(--muted)">📝 Notas</div>
+      <div class="sv-ingr">${esc(p.notes)}</div>
+    </div>`:'';
+  return`<div class="sv-group">
+    ${photoHtml}
+    <div class="sv-item">
+      <span class="sv-name">${p.emoji||'🛒'} ${esc(p.name)}</span>
+      ${meta?`<div style="font-size:12px;color:var(--muted);margin-top:5px">${meta}</div>`:''}
+    </div>
+    ${notesBox}
+  </div>`;
+}
+
+function _renderProductEditForm({name='',emoji='🛒',category='Outro',brand='',quantity='',notes='',photo=''}={}){
+  const catOpts=['Lacticínios','Cereais','Proteínas','Vegetais','Frutas','Snacks','Bebidas','Higiene','Limpeza','Outro']
+    .map(c=>`<option${c===category?' selected':''}>${c}</option>`).join('');
+  document.getElementById('productEditContent').innerHTML=`
+    <div class="form-group" style="display:flex;gap:8px">
+      <div style="flex:0 0 64px">
+        <label>Emoji</label>
+        <input id="pEmoji" style="font-size:22px;text-align:center;padding:6px 4px" maxlength="4" value="${esc(emoji)}"/>
+      </div>
+      <div style="flex:1">
+        <label>Nome *</label>
+        <input id="pName" placeholder="ex: Iogurte Grego" value="${esc(name)}"/>
+      </div>
+    </div>
+    <div class="form-group" style="display:flex;gap:8px">
+      <div style="flex:1">
+        <label>Marca</label>
+        <input id="pBrand" placeholder="ex: Activia" value="${esc(brand)}"/>
+      </div>
+      <div style="flex:1">
+        <label>Quantidade</label>
+        <input id="pQuantity" placeholder="ex: 125g" value="${esc(quantity)}"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Categoria</label>
+      <select id="pCategory">${catOpts}</select>
+    </div>
+    <div class="form-group">
+      <label style="color:var(--muted)">Notas (opcional)</label>
+      <textarea id="pNotes" class="ie-notes-area" rows="2" placeholder="Onde comprar, alternativas...">${esc(notes)}</textarea>
+    </div>
+    <div class="form-group">
+      <label>Foto (opcional)</label>
+      <label class="photo-upload-area" for="pPhotoInput" onclick="pasteImageTarget=applyProductPhoto" style="cursor:pointer">
+        <span id="pPhotoHint" ${photo?'style="display:none"':''}>📷 Clica, arrasta ou cola (Ctrl+V)</span>
+        <img id="pPhotoPreview" class="photo-preview" src="${photo||''}" style="${photo?'display:block':'display:none'}"/>
+      </label>
+      <input type="file" id="pPhotoInput" accept="image/*" style="display:none" onchange="onProductPhotoSelected(event)"/>
+      <input type="hidden" id="pPhoto" value="${photo||''}"/>
+      ${photo?`<button type="button" class="btn btn-ghost" style="margin-top:4px;font-size:12px" onclick="clearProductPhoto()">✕ Remover foto</button>`:''}
+    </div>`;
+  pasteImageTarget=applyProductPhoto;
+}
+
+function applyProductPhoto(dataUrl){
+  document.getElementById('pPhoto').value=dataUrl;
+  document.getElementById('pPhotoPreview').src=dataUrl;
+  document.getElementById('pPhotoPreview').style.display='block';
+  const h=document.getElementById('pPhotoHint');if(h)h.style.display='none';
+}
+function onProductPhotoSelected(e){
+  const file=e.target.files[0];if(!file)return;
+  compressImageFile(file).then(applyProductPhoto);
+}
+function clearProductPhoto(){
+  document.getElementById('pPhoto').value='';
+  document.getElementById('pPhotoInput').value='';
+  const pr=document.getElementById('pPhotoPreview');if(pr){pr.src='';pr.style.display='none';}
+  const h=document.getElementById('pPhotoHint');if(h)h.style.display='';
+}
+
+function openProductModal(id){
+  currentProductId=id;
+  const p=products.find(x=>x.id===id);if(!p)return;
+  document.getElementById('productModalTitle').textContent=`${p.emoji||'🛒'} ${p.name}`;
+  document.getElementById('productViewMode').style.display='';
+  document.getElementById('productEditMode').style.display='none';
+  document.getElementById('productViewContent').innerHTML=_renderProductView(p);
+  const db=document.getElementById('productDeleteBtn');if(db)db.style.display='';
+  openModal('productModal');
+}
+
+function openNewProductModal(){
+  currentProductId=null;
+  document.getElementById('productModalTitle').textContent='Novo Produto';
+  document.getElementById('productViewMode').style.display='none';
+  document.getElementById('productEditMode').style.display='';
+  const db=document.getElementById('productDeleteBtn');if(db)db.style.display='none';
+  _renderProductEditForm();
+  openModal('productModal');
+  setTimeout(()=>document.getElementById('pName')?.focus(),100);
+}
+
+function productSwitchToEdit(){
+  const p=products.find(x=>x.id===currentProductId);if(!p)return;
+  document.getElementById('productModalTitle').textContent='Editar Produto';
+  document.getElementById('productViewMode').style.display='none';
+  document.getElementById('productEditMode').style.display='';
+  const db=document.getElementById('productDeleteBtn');if(db)db.style.display='none';
+  _renderProductEditForm({name:p.name,emoji:p.emoji||'🛒',category:p.category||'Outro',brand:p.brand||'',quantity:p.quantity||'',notes:p.notes||'',photo:p.photo||''});
+}
+
+function productCancelEdit(){
+  if(currentProductId){openProductModal(currentProductId);}
+  else{closeModal('productModal');}
+}
+
+async function saveProduct(){
+  const name=(document.getElementById('pName')?.value||'').trim();
+  if(!name){alert('O nome é obrigatório.');document.getElementById('pName')?.focus();return;}
+  const btn=document.querySelector('#productModal #productEditMode .btn-primary');
+  const orig=btn?.textContent;
+  if(btn){btn.disabled=true;btn.textContent='⏳ A guardar...';}
+  try{
+    const emoji=document.getElementById('pEmoji')?.value||'🛒';
+    const brand=document.getElementById('pBrand')?.value.trim()||null;
+    const quantity=document.getElementById('pQuantity')?.value.trim()||null;
+    const category=document.getElementById('pCategory')?.value||'Outro';
+    const notes=document.getElementById('pNotes')?.value.trim()||null;
+    const photo=document.getElementById('pPhoto')?.value||null;
+    const body={name,emoji,brand,quantity,category,notes,photo};
+    try{
+      if(currentProductId){
+        const u=await apiFetch(`/products/${currentProductId}`,{method:'PUT',body:JSON.stringify(body)});
+        const i=products.findIndex(x=>x.id===currentProductId);
+        if(i>=0)products[i]={...products[i],...body,...(u||{})};
+      }else{
+        let saved=null;
+        try{saved=await apiFetch('/products',{method:'POST',body:JSON.stringify(body)});}
+        catch{saved={id:crypto.randomUUID?.()??('p-'+Date.now()),...body};}
+        products.unshift(saved);
+        currentProductId=saved.id;
+      }
+    }catch{
+      if(currentProductId){
+        const i=products.findIndex(x=>x.id===currentProductId);
+        if(i>=0)products[i]={...products[i],...body};
+      }
+    }
+  }finally{if(btn){btn.disabled=false;btn.textContent=orig;}}
+  saveLocal();renderProducts();closeModal('productModal');
+}
+
+async function deleteCurrentProduct(){
+  const p=products.find(x=>x.id===currentProductId);
+  if(!confirm(`Apagar "${p?.name||''}"?
+Esta ação não pode ser desfeita.`))return;
+  try{await apiFetch(`/products/${currentProductId}`,{method:'DELETE'});}catch{}
+  products=products.filter(x=>x.id!==currentProductId);
+  saveLocal();renderProducts();closeModal('productModal');
 }
 
 // ─── Notas ────────────────────────────────────────────────────────────────────
