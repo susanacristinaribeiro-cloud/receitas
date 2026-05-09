@@ -131,10 +131,10 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
 
 /* ── Slot Modal — view ──────────────────────────────────────────── */
 .sv-item{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:var(--bg);padding:12px 14px;}
-.sv-header{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
-.sv-name{font-size:14px;font-weight:600;flex:1;}
-.sv-badge{font-size:11px;padding:2px 8px;border-radius:12px;background:#e8f2f7;color:var(--teal);border:1px solid var(--teal);white-space:nowrap;}
-.sv-ingr{font-size:13px;color:var(--muted);white-space:pre-wrap;line-height:1.55;margin-top:6px;padding-top:8px;border-top:1px solid var(--border);}
+.sv-name{font-size:15px;font-weight:700;color:var(--text);display:block;margin-bottom:0;}
+.sv-recipe-section{margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.sv-recipe-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--teal);margin-bottom:5px;display:flex;align-items:center;gap:5px;}
+.sv-ingr{font-size:13px;color:var(--muted);white-space:pre-wrap;line-height:1.6;}
 
 /* ── Slot Modal — edit ──────────────────────────────────────────── */
 .se-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
@@ -941,12 +941,7 @@ function renderSlots(){
   document.getElementById('slotGrid').innerHTML=SLOTS.map(s=>{
     const entries=refeicoes[s.key]||[];
     const chips=entries.length
-      ?entries.map(e=>{
-          const linked=!!e.recipe_id;
-          return`<span class="slot-chip${linked?' linked':''}">
-            ${linked?'🔗 ':''}&nbsp;${esc(e.name)}
-          </span>`;
-        }).join('')
+      ?entries.map(e=>`<span class="slot-chip">${esc(e.name)}</span>`).join('')
       :`<div class="slot-empty-hint">Toca para adicionar...</div>`;
     return`<div class="slot-card ${s.cls}" onclick="openSlotModal('${s.key}')">
       <div class="slot-header">
@@ -985,12 +980,15 @@ function renderSlotView(){
   document.getElementById('slotViewList').innerHTML=entries.map(e=>{
     const r=e.recipe_id?recipes.find(x=>x.id===e.recipe_id):null;
     const ingr=r?(r.ingredients||''):(e.ingredients||'');
+    const recipeSection=r?`
+      <div class="sv-recipe-section">
+        <div class="sv-recipe-label">${r.emoji||'🍽️'} Receita: ${esc(r.name)}</div>
+        ${ingr.trim()?`<div class="sv-ingr">${esc(ingr.trim())}</div>`:''}
+      </div>`
+      :(ingr.trim()?`<div class="sv-recipe-section"><div class="sv-ingr">${esc(ingr.trim())}</div></div>`:'');
     return`<div class="sv-item">
-      <div class="sv-header">
-        <span class="sv-name">${esc(e.name)}</span>
-        ${r?`<span class="sv-badge">${r.emoji||'🍽️'} ${esc(r.name)}</span>`:''}
-      </div>
-      ${ingr.trim()?`<div class="sv-ingr">${esc(ingr.trim())}</div>`:''}
+      <span class="sv-name">${esc(e.name)}</span>
+      ${recipeSection}
     </div>`;
   }).join('');
 }
