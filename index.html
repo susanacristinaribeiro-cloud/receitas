@@ -262,9 +262,9 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
     <div class="toolbar">
       <button class="btn btn-ghost" onclick="showList()">← Voltar</button>
       <div style="flex:1"></div>
+      <button class="btn btn-danger" onclick="deleteCurrent()">🗑 Apagar</button>
       <button class="btn btn-ghost" onclick="exportRecipePDF(currentRecipe,this)">📄 PDF</button>
       <button class="btn btn-teal" onclick="editCurrent()">✏️ Editar</button>
-      <button class="btn btn-danger" onclick="deleteCurrent()">🗑 Apagar</button>
     </div>
     <div class="img-wrap" id="detailPhotoWrap" style="display:none">
       <img id="detailPhoto" class="detail-photo" src="" alt="foto" onclick="openLightbox(this.src)"/>
@@ -403,13 +403,13 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
   <div class="modal" style="max-width:480px">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
       <h2 id="itemModalSlotTitle" style="margin-bottom:0;flex:1"></h2>
+      <button id="itemDeleteBtn" class="btn btn-danger btn-sm" onclick="deleteCurrentItem()" style="display:none">🗑 Apagar</button>
     </div>
 
     <!-- VIEW -->
     <div id="itemViewMode">
       <div id="itemViewContent"></div>
       <div class="modal-footer">
-        <button class="btn btn-danger btn-sm" onclick="deleteCurrentItem()" style="margin-right:auto">🗑 Apagar</button>
         <button class="btn btn-ghost" onclick="closeModal('itemModal')">Fechar</button>
         <button class="btn btn-ghost" id="itemPdfBtn" onclick="exportMealPDF(currentSlot,currentEntryId,this)">📄 PDF</button>
         <button class="btn btn-primary" onclick="itemSwitchToEdit()">✏️ Editar</button>
@@ -1045,6 +1045,8 @@ function openItemModal(slot,entryId){
   const e=(refeicoes[slot]||[]).find(x=>x.id===entryId);
   if(!e)return;
   document.getElementById('itemViewContent').innerHTML=_renderItemView(e);
+  const delBtn=document.getElementById('itemDeleteBtn');
+  if(delBtn)delBtn.style.display='';
   openModal('itemModal');
 }
 
@@ -1054,6 +1056,8 @@ function openAddItemModal(slot){
   document.getElementById('itemViewMode').style.display='none';
   document.getElementById('itemEditMode').style.display='';
   _renderItemEditForm({name:'',recipe_ids:[],ingredients:'',photo:''});
+  const delBtn=document.getElementById('itemDeleteBtn');
+  if(delBtn)delBtn.style.display='none';
   openModal('itemModal');
   setTimeout(()=>document.getElementById('ieName')?.focus(),100);
 }
@@ -1063,6 +1067,7 @@ function itemSwitchToEdit(){
   if(!e)return;
   document.getElementById('itemViewMode').style.display='none';
   document.getElementById('itemEditMode').style.display='';
+  const _db=document.getElementById('itemDeleteBtn');if(_db)_db.style.display='none';
   _renderItemEditForm({name:e.name,recipe_ids:_entryRecipeIds(e),ingredients:e.ingredients||'',photo:e.photo||''});
 }
 
@@ -1070,6 +1075,7 @@ function itemCancelEdit(){
   if(currentEntryId){
     document.getElementById('itemViewMode').style.display='';
     document.getElementById('itemEditMode').style.display='none';
+    const _db=document.getElementById('itemDeleteBtn');if(_db)_db.style.display='';
   }else{closeModal('itemModal');}
 }
 
