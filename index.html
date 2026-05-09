@@ -975,32 +975,65 @@ function renderSlots(){
 // ── Item Modal state ──────────────────────────────────────────────────────────
 let currentSlot=null;
 let currentEntryId=null;
+let itemRecipeIds=[];
+
+function _entryRecipeIds(e){
+  if(e.recipe_ids&&e.recipe_ids.length)return e.recipe_ids;
+  if(e.recipe_id)return[e.recipe_id];
+  return[];
+}
+
+function _renderRecipeChips(){
+  const chipsHtml=itemRecipeIds.map((rid,i)=>{
+    const r=recipes.find(x=>x.id===rid);
+    const label=r?`${r.emoji||'🍽️'} ${esc(r.name)}`:`(id:${rid})`;
+    return`<span class="ie-recipe-chip">${label}<button type="button" onclick="removeItemRecipe(${i})" title="Remover">✕</button></span>`;
+  }).join('');
+  const el=document.getElementById('ieRecipeChips');
+  if(el)el.innerHTML=chipsHtml;
+}
+
+function addItemRecipe(id){
+  if(!id)return;
+  if(itemRecipeIds.includes(id)){document.getElementById('ieRecipeAdd').value='';return;}
+  itemRecipeIds.push(id);
+  document.getElementById('ieRecipeAdd').value='';
+  _renderRecipeChips();
+}
+
+function removeItemRecipe(i){
+  itemRecipeIds.splice(i,1);
+  _renderRecipeChips();
+}
 
 function _slotLabel(slot){const s=SLOTS.find(x=>x.key===slot);return s?`${s.icon} ${s.label}`:''}
 
 function _renderItemView(e){
-  const r=e.recipe_id?recipes.find(x=>x.id===e.recipe_id):null;
-  const recipeIngr=r?(r.ingredients||'').trim():'';
+  const rIds=_entryRecipeIds(e);
   const freeIngr=(e.ingredients||'').trim();
   const photoHtml=e.photo?`
     <div class="img-wrap" style="margin-bottom:10px">
       <img src="${e.photo}" class="detail-photo" onclick="openLightbox(this.src)" style="cursor:pointer"/>
       <button class="img-copy-btn" onclick="copyImg(document.querySelector('#itemViewContent img').src)">📋 Copiar</button>
     </div>`:'';
-  const recipeBox=r?`
-    <div class="sv-recipe-box">
-      <div class="sv-recipe-label">${r.emoji||'🍽️'} Receita: ${esc(r.name)}</div>
-      ${recipeIngr?`<div class="sv-ingr">${esc(recipeIngr)}</div>`:''}
-    </div>`:'';
   const ingrBox=freeIngr?`
     <div class="sv-recipe-box">
       <div class="sv-recipe-label">Ingredientes</div>
       <div class="sv-ingr">${esc(freeIngr)}</div>
     </div>`:'';
+  const recipeBoxes=rIds.map(rid=>{
+    const r=recipes.find(x=>x.id===rid);
+    if(!r)return'';
+    const ri=(r.ingredients||'').trim();
+    return`<div class="sv-recipe-box">
+      <div class="sv-recipe-label">${r.emoji||'🍽️'} Receita: ${esc(r.name)}</div>
+      ${ri?`<div class="sv-ingr">${esc(ri)}</div>`:''}
+    </div>`;
+  }).join('');
   return`<div class="sv-group">
     ${photoHtml}
     <div class="sv-item"><span class="sv-name">${esc(e.name)}</span></div>
-    ${recipeBox}${ingrBox}
+    ${ingrBox}${recipeBoxes}
   </div>`;
 }
 
@@ -1020,7 +1053,7 @@ function openAddItemModal(slot){
   document.getElementById('itemModalSlotTitle').textContent=_slotLabel(slot);
   document.getElementById('itemViewMode').style.display='none';
   document.getElementById('itemEditMode').style.display='';
-  _renderItemEditForm({name:'',recipe_id:'',ingredients:'',photo:''});
+  _renderItemEditForm({name:'',recipe_ids:[],ingredients:'',photo:''});
   openModal('itemModal');
   setTimeout(()=>document.getElementById('ieName')?.focus(),100);
 }
@@ -1030,7 +1063,7 @@ function itemSwitchToEdit(){
   if(!e)return;
   document.getElementById('itemViewMode').style.display='none';
   document.getElementById('itemEditMode').style.display='';
-  _renderItemEditForm({name:e.name,recipe_id:e.recipe_id||'',ingredients:e.ingredients||'',photo:e.photo||''});
+  _renderItemEditForm({name:e.name,recipe_ids:_entryRecipeIds(e),ingredients:e.ingredients||'',photo:e.photo||''});
 }
 
 function itemCancelEdit(){
@@ -1040,7 +1073,8 @@ function itemCancelEdit(){
   }else{closeModal('itemModal');}
 }
 
-function _renderItemEditForm({name,recipe_id,ingredients,photo}){
+function _renderItemEditForm({name,recipe_ids=[],ingredients,photo}){
+  itemRecipeIds=[...recipe_ids];
   const recOpts=recipes.map(r=>`<option value="${r.id}">${r.emoji||'🍽️'} ${esc(r.name)}</option>`).join('');
   document.getElementById('itemEditContent').innerHTML=`
     <div class="form-group">
@@ -1048,14 +1082,18 @@ function _renderItemEditForm({name,recipe_id,ingredients,photo}){
       <input id="ieName" placeholder="Ex: Crepes com Nutela + Iogurte Magro" value="${esc(name)}"/>
     </div>
     <div class="form-group">
-      <label>Receita associada (opcional)</label>
-      <select id="ieRecipe" onchange="onItemRecipeSel(this.value)">
-        <option value="">— Nenhuma —</option>${recOpts}
-      </select>
-    </div>
-    <div class="form-group">
       <label>Ingredientes (opcional)</label>
       <textarea id="ieIngr" rows="3" placeholder="10g Nutela&#10;Iogurte Magro&#10;1/2 fruta">${esc(ingredients)}</textarea>
+    </div>
+    <div class="form-group">
+      <label>Receitas associadas (opcional)</label>
+      <div id="ieRecipeChips" class="ie-recipe-chips"></div>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <select id="ieRecipeAdd" style="flex:1">
+          <option value="">— Adicionar receita —</option>${recOpts}
+        </select>
+        <button type="button" class="btn btn-ghost" onclick="addItemRecipe(document.getElementById('ieRecipeAdd').value)">＋</button>
+      </div>
     </div>
     <div class="form-group">
       <label>Foto (opcional)</label>
@@ -1067,7 +1105,7 @@ function _renderItemEditForm({name,recipe_id,ingredients,photo}){
       <input type="hidden" id="ieMealPhoto" value="${photo||''}"/>
       ${photo?`<button type="button" class="btn btn-ghost" style="margin-top:4px;font-size:12px" onclick="clearMealPhoto()">✕ Remover foto</button>`:''}
     </div>`;
-  document.getElementById('ieRecipe').value=recipe_id||'';
+  _renderRecipeChips();
   pasteImageTarget=applyMealPhoto;
 }
 
@@ -1091,24 +1129,20 @@ function clearMealPhoto(){
   if(hint)hint.style.display='';
 }
 
-function onItemRecipeSel(recipeId){
-  if(recipeId&&!document.getElementById('ieName').value.trim()){
-    const r=recipes.find(x=>x.id===recipeId);
-    if(r)document.getElementById('ieName').value=r.name;
-  }
-}
+// onItemRecipeSel removed — replaced by addItemRecipe/removeItemRecipe
 
 async function saveItem(){
   const name=document.getElementById('ieName').value.trim();
   if(!name){alert('O nome é obrigatório.');document.getElementById('ieName').focus();return;}
-  const recipe_id=document.getElementById('ieRecipe').value||null;
   const ingredients=document.getElementById('ieIngr').value.trim()||null;
   const photo=document.getElementById('ieMealPhoto').value||null;
   const btn=document.querySelector('#itemModal #itemEditMode .btn-primary');
   const orig=btn?.textContent;
   if(btn){btn.disabled=true;btn.textContent='⏳ A guardar...';}
   const slot=currentSlot;
-  const body={name,recipe_id,ingredients,photo};
+  const recipe_ids=itemRecipeIds.length?[...itemRecipeIds]:null;
+  const recipe_id=itemRecipeIds[0]||null;
+  const body={name,recipe_id,recipe_ids,ingredients,photo};
   try{
     if(currentEntryId){
       const u=await apiFetch(`/refeicoes/${encodeURIComponent(slot)}/${currentEntryId}`,{method:'PUT',body:JSON.stringify(body)});
@@ -1641,19 +1675,21 @@ async function pdDrawMeal(doc,entry){
   const nm=doc.splitTextToSize(stripEmoji(entry.name),pw-m*2);
   doc.text(nm,m,y);y+=nm.length*9+4;
   doc.setDrawColor(...PC.border);doc.setLineWidth(.3);doc.line(m,y,pw-m,y);y+=6;
-  // linked recipe
-  const r=entry.recipe_id?recipes.find(x=>x.id===entry.recipe_id):null;
-  if(r){
-    y=needY(doc,y,15,entry.name);
-    y=pdHeading(doc,`RECEITA: ${stripEmoji(r.name).toUpperCase()}`,y,m);
-    if(r.ingredients)y=pdBody(doc,r.ingredients,y,pw,m);
-    y+=4;
-  }
-  // free ingredients
+  // free ingredients first
   if(entry.ingredients){
     y=needY(doc,y,15,entry.name);
     y=pdHeading(doc,'INGREDIENTES',y,m);
     y=pdBody(doc,entry.ingredients,y,pw,m);y+=4;
+  }
+  // linked recipes
+  const _rIds=_entryRecipeIds(entry);
+  for(const rid of _rIds){
+    const r=recipes.find(x=>x.id===rid);
+    if(!r)continue;
+    y=needY(doc,y,15,entry.name);
+    y=pdHeading(doc,`RECEITA: ${stripEmoji(r.name).toUpperCase()}`,y,m);
+    if(r.ingredients)y=pdBody(doc,r.ingredients,y,pw,m);
+    y+=4;
   }
   // footer
   pdBorderStrip(doc,ph-10,pw);
