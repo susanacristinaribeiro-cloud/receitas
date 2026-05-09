@@ -124,9 +124,17 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
 .slot-entries{padding:10px 12px;}
 .slot-chip{display:inline-block;font-size:12px;padding:3px 9px;border-radius:20px;background:var(--bg);border:1px solid var(--border);margin:3px 3px 3px 0;color:var(--text);}
 .slot-chip.linked{border-color:var(--teal);color:var(--teal);}
-.slot-item-name{font-size:13px;color:var(--text);padding:4px 0;border-bottom:1px solid var(--border);line-height:1.4;}
-.slot-item-name:last-child{border-bottom:none;}
+.slot-item-row{display:flex;align-items:center;padding:8px 4px;border-bottom:1px solid var(--border);cursor:pointer;gap:8px;border-radius:6px;transition:background .12s;}
+.slot-item-row:last-child{border-bottom:none;}
+.slot-item-row:hover{background:rgba(0,0,0,.04);}
+.slot-item-row-name{flex:1;font-size:13px;color:var(--text);line-height:1.4;}
+.slot-item-arrow{font-size:11px;color:var(--muted);flex-shrink:0;}
+.slot-add-row{display:flex;align-items:center;justify-content:center;padding:8px 4px;cursor:pointer;font-size:12px;color:var(--teal);gap:4px;border-top:1px dashed var(--border);margin-top:4px;}
+.slot-add-row:hover{opacity:.7;}
 .slot-empty-hint{font-size:12px;color:var(--muted);padding:8px 0;font-style:italic;}
+.btn-sm{font-size:13px;padding:7px 14px;}
+.slot-add-btn-inline{background:none;border:1.5px solid var(--border);border-radius:50%;width:26px;height:26px;font-size:16px;cursor:pointer;color:var(--teal);display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;}
+.slot-add-btn-inline:hover{background:#e8f2f7;border-color:var(--teal);}
 .sc-peq{border-top:3px solid #f59e0b;}.sc-lm{border-top:3px solid var(--green);}
 .sc-alm{border-top:3px solid var(--teal);}.sc-lt{border-top:3px solid var(--amber);}
 .sc-jan{border-top:3px solid #9b7fd4;}.sc-sei{border-top:3px solid #e07a8a;}
@@ -390,28 +398,29 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
   </div>
 </div>
 
-<!-- ═══ MODAL: REFEIÇÃO ═══ -->
-<!-- ═══ MODAL: SLOT VIEW + EDIT ═══ -->
-<div id="slotModal" class="overlay">
-  <div class="modal" style="max-width:520px">
-    <h2 id="slotModalTitle"></h2>
+<!-- ═══ MODAL: ITEM DE REFEIÇÃO ═══ -->
+<div id="itemModal" class="overlay">
+  <div class="modal" style="max-width:480px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+      <h2 id="itemModalSlotTitle" style="margin-bottom:0;flex:1"></h2>
+    </div>
 
-    <!-- VIEW MODE -->
-    <div id="slotViewMode">
-      <div id="slotViewList"></div>
+    <!-- VIEW -->
+    <div id="itemViewMode">
+      <div id="itemViewContent"></div>
       <div class="modal-footer">
-        <button class="btn btn-ghost" onclick="closeModal('slotModal')">Fechar</button>
-        <button class="btn btn-primary" onclick="slotSwitchToEdit()">✏️ Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCurrentItem()" style="margin-right:auto">🗑 Apagar</button>
+        <button class="btn btn-ghost" onclick="closeModal('itemModal')">Fechar</button>
+        <button class="btn btn-primary" onclick="itemSwitchToEdit()">✏️ Editar</button>
       </div>
     </div>
 
-    <!-- EDIT MODE -->
-    <div id="slotEditMode" style="display:none">
-      <div id="slotEditRows"></div>
-      <button class="se-add-btn" onclick="addSlotRow()">+ Adicionar item</button>
+    <!-- EDIT / ADD -->
+    <div id="itemEditMode" style="display:none">
+      <div id="itemEditContent"></div>
       <div class="modal-footer">
-        <button class="btn btn-ghost" onclick="slotCancelEdit()">Cancelar</button>
-        <button class="btn btn-primary" onclick="saveSlotEdit()">Guardar</button>
+        <button class="btn btn-ghost" onclick="itemCancelEdit()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveItem()">Guardar</button>
       </div>
     </div>
   </div>
@@ -941,182 +950,180 @@ async function deleteCurrent(){
 }
 
 // ─── Refeições ─────────────────────────────────────────────────────────────────
+// ─── Refeições ─────────────────────────────────────────────────────────────────
 function renderSlots(){
   document.getElementById('slotGrid').innerHTML=SLOTS.map(s=>{
     const entries=refeicoes[s.key]||[];
-    const body=entries.length
-      ?entries.map(e=>`<div class="slot-item-name">${esc(e.name)}</div>`).join('')
-      :`<div class="slot-empty-hint">Toca para adicionar...</div>`;
-    return`<div class="slot-card ${s.cls}" onclick="openSlotModal('${s.key}')">
+    const rows=entries.map(e=>`
+      <div class="slot-item-row" onclick="openItemModal('${s.key}','${e.id}');event.stopPropagation()">
+        <span class="slot-item-row-name">${esc(e.name)}</span>
+        <span class="slot-item-arrow">›</span>
+      </div>`).join('');
+    const empty=entries.length===0?`<div class="slot-empty-hint">Sem refeições</div>`:'';
+    return`<div class="slot-card ${s.cls}">
       <div class="slot-header">
         <span class="slot-icon">${s.icon}</span>
         <h3>${s.label}</h3>
-        <span class="slot-count">${entries.length} item${entries.length!==1?'s':''}</span>
+        <button class="slot-add-btn-inline" onclick="openAddItemModal('${s.key}')" title="Adicionar">＋</button>
       </div>
-      <div class="slot-entries">${body}</div>
+      <div class="slot-entries">${rows}${empty}</div>
     </div>`;
   }).join('');
 }
 
-// ── Slot Modal state ──────────────────────────────────────────────────────────
+// ── Item Modal state ──────────────────────────────────────────────────────────
 let currentSlot=null;
-let slotEditRows=[]; // [{tempId, id, name, recipe_id}]
+let currentEntryId=null; // null = new item
+let itemEditMode_isRecipe=false;
 
-function openSlotModal(slot){
+function _slotLabel(slot){const s=SLOTS.find(x=>x.key===slot);return s?`${s.icon} ${s.label}`:''}
+
+function openItemModal(slot,entryId){
   currentSlot=slot;
-  const s=SLOTS.find(x=>x.key===slot);
-  document.getElementById('slotModalTitle').textContent=`${s.icon} ${s.label}`;
-  document.getElementById('slotViewMode').style.display='';
-  document.getElementById('slotEditMode').style.display='none';
-  renderSlotView();
-  openModal('slotModal');
-}
-
-function renderSlotView(){
-  const entries=refeicoes[currentSlot]||[];
-  if(!entries.length){
-    document.getElementById('slotViewList').innerHTML=
-      `<p style="color:var(--muted);text-align:center;padding:20px 0;font-style:italic">
-        Sem itens. Clica em ✏️ Editar para adicionar.
-      </p>`;
-    return;
-  }
-  document.getElementById('slotViewList').innerHTML=entries.map(e=>{
-    const r=e.recipe_id?recipes.find(x=>x.id===e.recipe_id):null;
-    const ingr=r?(r.ingredients||''):(e.ingredients||'');
-    const recipeBox=r?`
-      <div class="sv-recipe-box">
-        <div class="sv-recipe-label">${r.emoji||'🍽️'} Receita: ${esc(r.name)}</div>
-        ${ingr.trim()?`<div class="sv-ingr">${esc(ingr.trim())}</div>`:''}
-      </div>`
-      :(ingr.trim()?`<div class="sv-recipe-box"><div class="sv-ingr">${esc(ingr.trim())}</div></div>`:'');
-    return`<div class="sv-group">
+  currentEntryId=entryId;
+  document.getElementById('itemModalSlotTitle').textContent=_slotLabel(slot);
+  document.getElementById('itemViewMode').style.display='';
+  document.getElementById('itemEditMode').style.display='none';
+  // render view
+  const e=(refeicoes[slot]||[]).find(x=>x.id===entryId);
+  if(!e)return;
+  const r=e.recipe_id?recipes.find(x=>x.id===e.recipe_id):null;
+  const ingr=r?(r.ingredients||''):(e.ingredients||'');
+  const recipeBox=r?`
+    <div class="sv-recipe-box">
+      <div class="sv-recipe-label">${r.emoji||'🍽️'} Receita: ${esc(r.name)}</div>
+      ${ingr.trim()?`<div class="sv-ingr">${esc(ingr.trim())}</div>`:''}
+    </div>`:'';
+  document.getElementById('itemViewContent').innerHTML=`
+    <div class="sv-group">
       <div class="sv-item"><span class="sv-name">${esc(e.name)}</span></div>
       ${recipeBox}
     </div>`;
-  }).join('');
+  openModal('itemModal');
 }
 
-function slotSwitchToEdit(){
-  const entries=refeicoes[currentSlot]||[];
-  // mode: 'recipe' if has recipe_id, else 'text'
-  slotEditRows=entries.map(e=>({
-    id:e.id,
-    name:e.name,
-    recipe_id:e.recipe_id||'',
-    mode:e.recipe_id?'recipe':'text'
-  }));
-  renderSlotEditRows();
-  document.getElementById('slotViewMode').style.display='none';
-  document.getElementById('slotEditMode').style.display='';
+function openAddItemModal(slot){
+  currentSlot=slot;
+  currentEntryId=null;
+  itemEditMode_isRecipe=false;
+  document.getElementById('itemModalSlotTitle').textContent=_slotLabel(slot);
+  document.getElementById('itemViewMode').style.display='none';
+  document.getElementById('itemEditMode').style.display='';
+  renderItemEditForm({name:'',recipe_id:'',mode:'text'});
+  openModal('itemModal');
+  setTimeout(()=>document.querySelector('#itemEditContent .se-name')?.focus(),100);
 }
 
-function slotCancelEdit(){
-  document.getElementById('slotViewMode').style.display='';
-  document.getElementById('slotEditMode').style.display='none';
-  renderSlotView();
+function itemSwitchToEdit(){
+  const e=(refeicoes[currentSlot]||[]).find(x=>x.id===currentEntryId);
+  if(!e)return;
+  document.getElementById('itemViewMode').style.display='none';
+  document.getElementById('itemEditMode').style.display='';
+  renderItemEditForm({name:e.name,recipe_id:e.recipe_id||'',mode:e.recipe_id?'recipe':'text'});
 }
 
-function renderSlotEditRows(){
-  const recOpts=recipes.map(r=>`<option value="${r.id}">${r.emoji||'🍽️'} ${esc(r.name)}</option>`).join('');
-  document.getElementById('slotEditRows').innerHTML=slotEditRows.map((row,i)=>{
-    const isRecipe=row.mode==='recipe';
-    const inputHtml=isRecipe
-      ?`<select class="se-recipe-sel" onchange="onSlotRecipeSel(${i},this.value)">
-          <option value="">— escolher receita —</option>${recOpts}
-        </select>`
-      :`<input class="se-name" placeholder="Descrição..." value="${esc(row.name)}"
-          oninput="slotEditRows[${i}].name=this.value"/>`;
-    return`<div class="se-row">
-      <div class="se-input-wrap">${inputHtml}</div>
-      <button class="se-toggle${isRecipe?' active':''}" title="${isRecipe?'Mudar para texto':'Ligar a receita'}"
-        onclick="toggleSlotRowMode(${i})">${isRecipe?'📝':'🔗'}</button>
-      <button class="se-rm" title="Remover" onclick="removeSlotRow(${i})">✕</button>
-    </div>`;
-  }).join('');
-  // restore recipe selects
-  slotEditRows.forEach((row,i)=>{
-    if(row.mode==='recipe'){
-      const sel=document.querySelectorAll('#slotEditRows .se-recipe-sel')[
-        slotEditRows.slice(0,i).filter(r=>r.mode==='recipe').length
-      ];
-      if(sel)sel.value=row.recipe_id||'';
-    }
-  });
-}
-
-function toggleSlotRowMode(i){
-  slotEditRows[i].mode=slotEditRows[i].mode==='recipe'?'text':'recipe';
-  // if switching to text, clear recipe; keep name
-  if(slotEditRows[i].mode==='text') slotEditRows[i].recipe_id='';
-  // if switching to recipe, clear name (will be set on recipe select)
-  if(slotEditRows[i].mode==='recipe') slotEditRows[i].name='';
-  renderSlotEditRows();
-}
-
-function onSlotRecipeSel(i,recipeId){
-  slotEditRows[i].recipe_id=recipeId;
-  if(recipeId){
-    const r=recipes.find(x=>x.id===recipeId);
-    if(r) slotEditRows[i].name=r.name;
+function itemCancelEdit(){
+  if(currentEntryId){
+    // back to view
+    document.getElementById('itemViewMode').style.display='';
+    document.getElementById('itemEditMode').style.display='none';
   }else{
-    slotEditRows[i].name='';
+    closeModal('itemModal');
   }
 }
 
-function addSlotRow(){
-  slotEditRows.push({id:'',name:'',recipe_id:'',mode:'text'});
-  renderSlotEditRows();
-  const inputs=document.querySelectorAll('#slotEditRows .se-name');
-  if(inputs.length)inputs[inputs.length-1].focus();
+function renderItemEditForm(row){
+  const isRecipe=row.mode==='recipe';
+  const recOpts=recipes.map(r=>`<option value="${r.id}">${r.emoji||'🍽️'} ${esc(r.name)}</option>`).join('');
+  const inputHtml=isRecipe
+    ?`<select class="se-recipe-sel" onchange="onItemRecipeSel(this.value)">
+        <option value="">— escolher receita —</option>${recOpts}
+      </select>`
+    :`<input class="se-name" placeholder="Ex: Iogurte com granola..." value="${esc(row.name)}"
+        oninput="this.dataset.changed='1'"/>`;
+  document.getElementById('itemEditContent').innerHTML=`
+    <div class="se-row" style="margin-bottom:0">
+      <div class="se-input-wrap">${inputHtml}</div>
+      <button class="se-toggle${isRecipe?' active':''}"
+        title="${isRecipe?'Mudar para texto livre':'Ligar a uma receita'}"
+        onclick="toggleItemMode()">${isRecipe?'📝':'🔗'}</button>
+    </div>`;
+  if(isRecipe){
+    const sel=document.querySelector('#itemEditContent .se-recipe-sel');
+    if(sel)sel.value=row.recipe_id||'';
+  }
+  // store current mode
+  document.getElementById('itemEditContent').dataset.mode=row.mode;
+  document.getElementById('itemEditContent').dataset.recipeId=row.recipe_id||'';
+  document.getElementById('itemEditContent').dataset.name=row.name||'';
 }
 
-function removeSlotRow(i){
-  slotEditRows.splice(i,1);
-  renderSlotEditRows();
+function toggleItemMode(){
+  const c=document.getElementById('itemEditContent');
+  const wasRecipe=c.dataset.mode==='recipe';
+  const name=wasRecipe?'':(document.querySelector('#itemEditContent .se-name')?.value||'');
+  renderItemEditForm({name,recipe_id:'',mode:wasRecipe?'text':'recipe'});
+  if(!wasRecipe) setTimeout(()=>document.querySelector('#itemEditContent .se-recipe-sel')?.focus(),50);
+  else setTimeout(()=>document.querySelector('#itemEditContent .se-name')?.focus(),50);
 }
 
-async function saveSlotEdit(){
-  // sync text-mode names from DOM (oninput may miss paste)
-  let textIdx=0;
-  slotEditRows.forEach((row,i)=>{
-    if(row.mode==='text'){
-      const el=document.querySelectorAll('#slotEditRows .se-name')[textIdx++];
-      if(el)slotEditRows[i].name=el.value.trim();
-    }
-  });
-  const rows=slotEditRows.filter(r=>r.mode==='recipe'?!!r.recipe_id:!!r.name.trim());
-  const btn=document.querySelector('#slotModal #slotEditMode .btn-primary');
+function onItemRecipeSel(recipeId){
+  const c=document.getElementById('itemEditContent');
+  c.dataset.recipeId=recipeId;
+}
+
+async function saveItem(){
+  const c=document.getElementById('itemEditContent');
+  const isRecipe=c.dataset.mode==='recipe';
+  let name='',recipe_id=null;
+  if(isRecipe){
+    recipe_id=document.querySelector('#itemEditContent .se-recipe-sel')?.value||'';
+    if(!recipe_id){alert('Escolhe uma receita.');return;}
+    name=recipes.find(r=>r.id===recipe_id)?.name||recipe_id;
+  }else{
+    name=document.querySelector('#itemEditContent .se-name')?.value.trim()||'';
+    if(!name){alert('O nome é obrigatório.');return;}
+  }
+  const btn=document.querySelector('#itemModal #itemEditMode .btn-primary');
   const orig=btn?.textContent;
   if(btn){btn.disabled=true;btn.textContent='⏳ A guardar...';}
   const slot=currentSlot;
-  const oldEntries=refeicoes[slot]||[];
+  const body={name,recipe_id:recipe_id||null,ingredients:null};
   try{
-    // DELETE entries that were removed
-    const keptIds=new Set(rows.filter(r=>r.id).map(r=>r.id));
-    for(const old of oldEntries){
-      if(!keptIds.has(old.id)){
-        try{await apiFetch(`/refeicoes/${encodeURIComponent(slot)}/${old.id}`,{method:'DELETE'});}catch{}
-      }
+    if(currentEntryId){
+      const u=await apiFetch(`/refeicoes/${encodeURIComponent(slot)}/${currentEntryId}`,{method:'PUT',body:JSON.stringify(body)});
+      const i=(refeicoes[slot]||[]).findIndex(e=>e.id===currentEntryId);
+      if(i>=0)refeicoes[slot][i]=u;
+    }else{
+      const c2=await apiFetch(`/refeicoes/${encodeURIComponent(slot)}`,{method:'POST',body:JSON.stringify(body)});
+      if(!refeicoes[slot])refeicoes[slot]=[];
+      refeicoes[slot].push(c2);
+      currentEntryId=c2.id;
     }
-    // PUT/POST each row in order
-    const newEntries=[];
-    for(const row of rows){
-      const body={name:row.name,recipe_id:row.recipe_id||null,ingredients:null};
-      if(row.id&&oldEntries.find(e=>e.id===row.id)){
-        try{const u=await apiFetch(`/refeicoes/${encodeURIComponent(slot)}/${row.id}`,{method:'PUT',body:JSON.stringify(body)});newEntries.push(u);}
-        catch{newEntries.push({id:row.id,...body});}
-      }else{
-        try{const c=await apiFetch(`/refeicoes/${encodeURIComponent(slot)}`,{method:'POST',body:JSON.stringify(body)});newEntries.push(c);}
-        catch{newEntries.push({id:crypto.randomUUID(),...body});}
-      }
+  }catch{
+    if(currentEntryId){
+      const i=(refeicoes[slot]||[]).findIndex(e=>e.id===currentEntryId);
+      if(i>=0)refeicoes[slot][i]={...refeicoes[slot][i],...body};
+    }else{
+      if(!refeicoes[slot])refeicoes[slot]=[];
+      const newE={id:crypto.randomUUID(),...body};
+      refeicoes[slot].push(newE);
+      currentEntryId=newE.id;
     }
-    refeicoes[slot]=newEntries;
   }finally{
     if(btn){btn.disabled=false;btn.textContent=orig;}
   }
   saveLocal();renderSlots();
-  slotCancelEdit();
+  // show view of saved item
+  openItemModal(slot,currentEntryId);
+}
+
+async function deleteCurrentItem(){
+  const e=(refeicoes[currentSlot]||[]).find(x=>x.id===currentEntryId);
+  if(!confirm(`Apagar "${e?.name||''}"?`))return;
+  try{await apiFetch(`/refeicoes/${encodeURIComponent(currentSlot)}/${currentEntryId}`,{method:'DELETE'});}catch{}
+  if(refeicoes[currentSlot])refeicoes[currentSlot]=refeicoes[currentSlot].filter(x=>x.id!==currentEntryId);
+  saveLocal();renderSlots();closeModal('itemModal');
 }
 
 // ─── Notas ────────────────────────────────────────────────────────────────────
