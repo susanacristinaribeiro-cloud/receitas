@@ -973,45 +973,49 @@ function renderSlots(){
 
 // ── Item Modal state ──────────────────────────────────────────────────────────
 let currentSlot=null;
-let currentEntryId=null; // null = new item
-let itemEditMode_isRecipe=false;
+let currentEntryId=null;
 
 function _slotLabel(slot){const s=SLOTS.find(x=>x.key===slot);return s?`${s.icon} ${s.label}`:''}
 
-function openItemModal(slot,entryId){
-  currentSlot=slot;
-  currentEntryId=entryId;
-  document.getElementById('itemModalSlotTitle').textContent=_slotLabel(slot);
-  document.getElementById('itemViewMode').style.display='';
-  document.getElementById('itemEditMode').style.display='none';
-  // render view
-  const e=(refeicoes[slot]||[]).find(x=>x.id===entryId);
-  if(!e)return;
+function _renderItemView(e){
   const r=e.recipe_id?recipes.find(x=>x.id===e.recipe_id):null;
-  const ingr=r?(r.ingredients||''):(e.ingredients||'');
+  const recipeIngr=r?(r.ingredients||'').trim():'';
+  const freeIngr=(e.ingredients||'').trim();
   const recipeBox=r?`
     <div class="sv-recipe-box">
       <div class="sv-recipe-label">${r.emoji||'🍽️'} Receita: ${esc(r.name)}</div>
-      ${ingr.trim()?`<div class="sv-ingr">${esc(ingr.trim())}</div>`:''}
+      ${recipeIngr?`<div class="sv-ingr">${esc(recipeIngr)}</div>`:''}
     </div>`:'';
-  document.getElementById('itemViewContent').innerHTML=`
-    <div class="sv-group">
-      <div class="sv-item"><span class="sv-name">${esc(e.name)}</span></div>
-      ${recipeBox}
-    </div>`;
+  const ingrBox=freeIngr?`
+    <div class="sv-recipe-box">
+      <div class="sv-recipe-label">Ingredientes</div>
+      <div class="sv-ingr">${esc(freeIngr)}</div>
+    </div>`:'';
+  return`<div class="sv-group">
+    <div class="sv-item"><span class="sv-name">${esc(e.name)}</span></div>
+    ${recipeBox}${ingrBox}
+  </div>`;
+}
+
+function openItemModal(slot,entryId){
+  currentSlot=slot;currentEntryId=entryId;
+  document.getElementById('itemModalSlotTitle').textContent=_slotLabel(slot);
+  document.getElementById('itemViewMode').style.display='';
+  document.getElementById('itemEditMode').style.display='none';
+  const e=(refeicoes[slot]||[]).find(x=>x.id===entryId);
+  if(!e)return;
+  document.getElementById('itemViewContent').innerHTML=_renderItemView(e);
   openModal('itemModal');
 }
 
 function openAddItemModal(slot){
-  currentSlot=slot;
-  currentEntryId=null;
-  itemEditMode_isRecipe=false;
+  currentSlot=slot;currentEntryId=null;
   document.getElementById('itemModalSlotTitle').textContent=_slotLabel(slot);
   document.getElementById('itemViewMode').style.display='none';
   document.getElementById('itemEditMode').style.display='';
-  renderItemEditForm({name:'',recipe_id:'',mode:'text'});
+  _renderItemEditForm({name:'',recipe_id:'',ingredients:''});
   openModal('itemModal');
-  setTimeout(()=>document.querySelector('#itemEditContent .se-name')?.focus(),100);
+  setTimeout(()=>document.getElementById('ieName')?.focus(),100);
 }
 
 function itemSwitchToEdit(){
@@ -1019,76 +1023,53 @@ function itemSwitchToEdit(){
   if(!e)return;
   document.getElementById('itemViewMode').style.display='none';
   document.getElementById('itemEditMode').style.display='';
-  renderItemEditForm({name:e.name,recipe_id:e.recipe_id||'',mode:e.recipe_id?'recipe':'text'});
+  _renderItemEditForm({name:e.name,recipe_id:e.recipe_id||'',ingredients:e.ingredients||''});
 }
 
 function itemCancelEdit(){
   if(currentEntryId){
-    // back to view
     document.getElementById('itemViewMode').style.display='';
     document.getElementById('itemEditMode').style.display='none';
-  }else{
-    closeModal('itemModal');
-  }
+  }else{closeModal('itemModal');}
 }
 
-function renderItemEditForm(row){
-  const isRecipe=row.mode==='recipe';
+function _renderItemEditForm({name,recipe_id,ingredients}){
   const recOpts=recipes.map(r=>`<option value="${r.id}">${r.emoji||'🍽️'} ${esc(r.name)}</option>`).join('');
-  const inputHtml=isRecipe
-    ?`<select class="se-recipe-sel" onchange="onItemRecipeSel(this.value)">
-        <option value="">— escolher receita —</option>${recOpts}
-      </select>`
-    :`<input class="se-name" placeholder="Ex: Iogurte com granola..." value="${esc(row.name)}"
-        oninput="this.dataset.changed='1'"/>`;
   document.getElementById('itemEditContent').innerHTML=`
-    <div class="se-row" style="margin-bottom:0">
-      <div class="se-input-wrap">${inputHtml}</div>
-      <button class="se-toggle${isRecipe?' active':''}"
-        title="${isRecipe?'Mudar para texto livre':'Ligar a uma receita'}"
-        onclick="toggleItemMode()">${isRecipe?'📝':'🔗'}</button>
+    <div class="form-group">
+      <label>Nome da refeição *</label>
+      <input id="ieName" placeholder="Ex: Crepes com Nutela + Iogurte Magro" value="${esc(name)}"/>
+    </div>
+    <div class="form-group">
+      <label>Receita associada (opcional)</label>
+      <select id="ieRecipe" onchange="onItemRecipeSel(this.value)">
+        <option value="">— Nenhuma —</option>${recOpts}
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Ingredientes (opcional)</label>
+      <textarea id="ieIngr" rows="3" placeholder="10g Nutela&#10;Iogurte Magro&#10;1/2 fruta">${esc(ingredients)}</textarea>
     </div>`;
-  if(isRecipe){
-    const sel=document.querySelector('#itemEditContent .se-recipe-sel');
-    if(sel)sel.value=row.recipe_id||'';
-  }
-  // store current mode
-  document.getElementById('itemEditContent').dataset.mode=row.mode;
-  document.getElementById('itemEditContent').dataset.recipeId=row.recipe_id||'';
-  document.getElementById('itemEditContent').dataset.name=row.name||'';
-}
-
-function toggleItemMode(){
-  const c=document.getElementById('itemEditContent');
-  const wasRecipe=c.dataset.mode==='recipe';
-  const name=wasRecipe?'':(document.querySelector('#itemEditContent .se-name')?.value||'');
-  renderItemEditForm({name,recipe_id:'',mode:wasRecipe?'text':'recipe'});
-  if(!wasRecipe) setTimeout(()=>document.querySelector('#itemEditContent .se-recipe-sel')?.focus(),50);
-  else setTimeout(()=>document.querySelector('#itemEditContent .se-name')?.focus(),50);
+  document.getElementById('ieRecipe').value=recipe_id||'';
 }
 
 function onItemRecipeSel(recipeId){
-  const c=document.getElementById('itemEditContent');
-  c.dataset.recipeId=recipeId;
+  if(recipeId&&!document.getElementById('ieName').value.trim()){
+    const r=recipes.find(x=>x.id===recipeId);
+    if(r)document.getElementById('ieName').value=r.name;
+  }
 }
 
 async function saveItem(){
-  const c=document.getElementById('itemEditContent');
-  const isRecipe=c.dataset.mode==='recipe';
-  let name='',recipe_id=null;
-  if(isRecipe){
-    recipe_id=document.querySelector('#itemEditContent .se-recipe-sel')?.value||'';
-    if(!recipe_id){alert('Escolhe uma receita.');return;}
-    name=recipes.find(r=>r.id===recipe_id)?.name||recipe_id;
-  }else{
-    name=document.querySelector('#itemEditContent .se-name')?.value.trim()||'';
-    if(!name){alert('O nome é obrigatório.');return;}
-  }
+  const name=document.getElementById('ieName').value.trim();
+  if(!name){alert('O nome é obrigatório.');document.getElementById('ieName').focus();return;}
+  const recipe_id=document.getElementById('ieRecipe').value||null;
+  const ingredients=document.getElementById('ieIngr').value.trim()||null;
   const btn=document.querySelector('#itemModal #itemEditMode .btn-primary');
   const orig=btn?.textContent;
   if(btn){btn.disabled=true;btn.textContent='⏳ A guardar...';}
   const slot=currentSlot;
-  const body={name,recipe_id:recipe_id||null,ingredients:null};
+  const body={name,recipe_id,ingredients};
   try{
     if(currentEntryId){
       const u=await apiFetch(`/refeicoes/${encodeURIComponent(slot)}/${currentEntryId}`,{method:'PUT',body:JSON.stringify(body)});
