@@ -483,6 +483,16 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
     </div>
     <div class="form-group"><label>API Key</label><input id="sKey" type="password"/></div>
     <p style="font-size:12px;color:var(--muted);margin-top:8px">Sem URL, a app funciona offline com dados locais.</p>
+    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0"/>
+    <div class="form-group">
+      <label style="color:var(--muted)">🔄 Recuperação de dados</label>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button class="btn btn-ghost" style="flex:1;font-size:13px" onclick="exportDataJSON()">⬇ Exportar JSON</button>
+        <button class="btn btn-ghost" style="flex:1;font-size:13px" onclick="document.getElementById('importJSONInput').click()">⬆ Importar JSON</button>
+      </div>
+      <input type="file" id="importJSONInput" accept=".json" style="display:none" onchange="importDataJSON(event)"/>
+      <div id="recoveryMsg" style="font-size:12px;color:var(--teal);margin-top:6px;display:none"></div>
+    </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('settingsOverlay')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveSettings()">🔑 Ligar</button>
@@ -650,6 +660,35 @@ function populateCatDatalist(){
   document.getElementById('catDatalist').innerHTML=
     [...new Set([...categories,...recipes.map(r=>r.category).filter(Boolean)])].sort()
     .map(c=>`<option value="${esc(c)}">`).join('');
+}
+
+// ─── Export / Import JSON ─────────────────────────────────────────────────────
+function exportDataJSON(){
+  const data={recipes,refeicoes,categories,notes:appNotes,products};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='receitas_backup_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+}
+function importDataJSON(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const d=JSON.parse(ev.target.result);
+      if(d.recipes)recipes=d.recipes;
+      if(d.refeicoes)refeicoes=d.refeicoes;
+      if(d.categories)categories=d.categories;
+      if(d.notes)appNotes=d.notes;
+      if(d.products)products=d.products;
+      saveLocal();render();
+      const msg=document.getElementById('recoveryMsg');
+      if(msg){msg.textContent='✅ Dados importados com sucesso!';msg.style.display='';}
+    }catch(err){alert('Erro ao importar: '+err.message);}
+  };
+  reader.readAsText(file);
+  e.target.value='';
 }
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
