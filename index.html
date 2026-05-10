@@ -60,8 +60,8 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
 .recipes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}
 .recipe-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;transition:box-shadow .15s,transform .1s;}
 .recipe-card:hover{box-shadow:var(--shadow);transform:translateY(-2px);}
-.recipe-card .card-photo{width:100%;height:130px;object-fit:cover;display:block;}
-.recipe-card .card-placeholder{width:100%;height:88px;display:flex;align-items:center;justify-content:center;font-size:38px;background:var(--accent-light);}
+.recipe-card .card-photo{width:100%;height:90px;object-fit:cover;display:block;}
+.recipe-card .card-placeholder{width:100%;height:70px;display:flex;align-items:center;justify-content:center;font-size:32px;background:var(--accent-light);}
 .recipe-card .card-body{padding:10px 12px;}
 .recipe-card h3{font-size:13px;font-weight:700;margin-bottom:4px;color:var(--text);}
 .recipe-card .meta{font-size:11px;color:var(--muted);display:flex;gap:5px;flex-wrap:wrap;}
@@ -195,11 +195,11 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
 
 /* ── Carousel editor (thumbnails) ───────────────────────────────── */
 .carousel-editor-grid{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0;}
-.carousel-thumb{position:relative;width:76px;}
-.carousel-thumb .img-wrap{width:76px;height:76px;}
-.carousel-thumb img{width:76px;height:76px;object-fit:cover;border-radius:6px;cursor:pointer;display:block;}
-.carousel-thumb-rm{position:absolute;top:-6px;right:-6px;background:var(--red);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;}
-.carousel-thumb-add{width:76px;height:76px;border:2px dashed var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--muted);cursor:pointer;flex-shrink:0;}
+.carousel-thumb{position:relative;width:52px;}
+.carousel-thumb .img-wrap{width:52px;height:52px;}
+.carousel-thumb img{width:52px;height:52px;object-fit:cover;border-radius:5px;cursor:pointer;display:block;}
+.carousel-thumb-rm{position:absolute;top:-5px;right:-5px;background:var(--red);color:#fff;border:none;border-radius:50%;width:15px;height:15px;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;}
+.carousel-thumb-add{width:52px;height:52px;border:2px dashed var(--border);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--muted);cursor:pointer;flex-shrink:0;}
 .carousel-thumb-add:hover{border-color:var(--accent);color:var(--accent);}
 .carousel-title{font-size:13px;font-weight:700;color:var(--teal);margin:10px 0 4px;letter-spacing:.2px;}
 
@@ -287,7 +287,7 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
 <!-- ═══ REFEIÇÕES ═══ -->
 <div id="page-refeicoes" class="page">
   <div class="toolbar">
-    <span style="font-size:13px;color:var(--muted)">Organiza as tuas refeições diárias por tipo</span>
+    <input id="refeicaoSearch" class="search-box" placeholder="🔍 Pesquisar refeições..." oninput="renderSlots()" style="flex:1"/>
   </div>
   <div id="slotGrid" class="slot-grid"></div>
 </div>
@@ -767,7 +767,7 @@ function renderRecipes(){
   container.innerHTML=Object.keys(grouped).sort((a,b)=>a.localeCompare(b,'pt')).map(cat=>`
     <div class="cat-section">
       <div class="cat-section-title">${esc(cat)}<span class="cat-count">${grouped[cat].length}</span></div>
-      <div class="recipes-grid">${grouped[cat].map(recipeCardHtml).join('')}</div>
+      <div class="recipes-grid">${grouped[cat].sort((a,b)=>a.name.localeCompare(b.name,'pt')).map(recipeCardHtml).join('')}</div>
     </div>`).join('');
 }
 
@@ -1087,14 +1087,16 @@ async function deleteCurrent(){
 // ─── Refeições ─────────────────────────────────────────────────────────────────
 // ─── Refeições ─────────────────────────────────────────────────────────────────
 function renderSlots(){
+  const q=(document.getElementById('refeicaoSearch')?.value||'').toLowerCase();
   document.getElementById('slotGrid').innerHTML=SLOTS.map(s=>{
-    const entries=refeicoes[s.key]||[];
+    const raw=(refeicoes[s.key]||[]).slice().sort((a,b)=>a.name.localeCompare(b.name,'pt'));
+    const entries=q?raw.filter(e=>e.name.toLowerCase().includes(q)):raw;
     const rows=entries.map(e=>`
       <div class="slot-item-row" onclick="openItemModal('${s.key}','${e.id}');event.stopPropagation()">
         <span class="slot-item-row-name">${esc(e.name)}</span>
         <span class="slot-item-arrow">›</span>
       </div>`).join('');
-    const empty=entries.length===0?`<div class="slot-empty-hint">Sem refeições</div>`:'';
+    const empty=entries.length===0?`<div class="slot-empty-hint">${q?'Sem resultados':'Sem refeições'}</div>`:'';
     return`<div class="slot-card ${s.cls}">
       <div class="slot-header">
         <span class="slot-icon">${s.icon}</span>
@@ -1357,7 +1359,7 @@ function renderProducts(){
     const mq=!q||p.name.toLowerCase().includes(q);
     const mc=!cat||p.category===cat;
     return mq&&mc;
-  });
+  }).sort((a,b)=>a.name.localeCompare(b.name,'pt'));
   const el=document.getElementById('productsContainer');
   if(!el)return;
   if(!list.length){
