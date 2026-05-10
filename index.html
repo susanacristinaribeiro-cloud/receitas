@@ -578,6 +578,7 @@ let notesBlocks=[], notesPhotoTargetIdx=-1;
 let appNotes=[], noteBlocks=[], notePhotoTargetIdx=-1;
 let products=[];
 let currentProductId=null;
+let pProductPhotos=[]; // array de dataUrl para o editor de produto
 const carouselState={}; // {cid: {images:[], idx:0}}
 
 const SLOTS=[
@@ -655,7 +656,7 @@ function saveLocal(){
       localStorage.setItem('refeicoes',JSON.stringify(Object.fromEntries(Object.entries(refeicoes).map(([k,v])=>[k,v.map(e=>({...e,photo:null}))]))));
       localStorage.setItem('categories',JSON.stringify(categories));
       localStorage.setItem('appNotes',JSON.stringify(appNotes));
-      localStorage.setItem('products',JSON.stringify(products.map(p=>({...p,photo:null}))));
+      localStorage.setItem('products',JSON.stringify(products.map(p=>({...p,photos:[]}))));
     }catch{}
   }
 }
@@ -701,7 +702,7 @@ function importDataJSON(e){
         ));
         localStorage.setItem('categories',JSON.stringify(categories));
         localStorage.setItem('appNotes',JSON.stringify(appNotes));
-        localStorage.setItem('products',JSON.stringify(products.map(p=>({...p,photo:null}))));
+        localStorage.setItem('products',JSON.stringify(products.map(p=>({...p,photos:[]}))));
         // receitas sem foto para caber
         localStorage.setItem('recipes',JSON.stringify(recipes.map(r=>({...r,photo:null}))));
       }catch{}
@@ -1336,15 +1337,14 @@ async function deleteCurrentItem(){
 
 
 // ─── Produtos ─────────────────────────────────────────────────────────────────
-function productCardHtml(p){return`
+function _prodFirstPhoto(p){return(p.photos&&p.photos[0])||p.photo||null;}
+function productCardHtml(p){const img=_prodFirstPhoto(p);return`
   <div class="recipe-card" onclick="openProductModal('${p.id}')">
-    ${p.photo?`<img class="card-photo" src="${p.photo}" alt="${esc(p.name)}" loading="lazy"/>`
-             :`<div class="card-placeholder">${p.emoji||'🛒'}</div>`}
+    ${img?`<img class="card-photo" src="${img}" alt="${esc(p.name)}" loading="lazy"/>`
+         :`<div class="card-placeholder">${p.emoji||'🛒'}</div>`}
     <div class="card-body">
       <h3>${esc(p.name)}</h3>
       <div class="meta">
-        ${p.brand?`<span>🏷️ ${esc(p.brand)}</span>`:''}
-        ${p.quantity?`<span>📦 ${esc(p.quantity)}</span>`:''}
         ${p.category&&p.category!=='Outro'?`<span>${esc(p.category)}</span>`:''}
       </div>
     </div>
@@ -1354,7 +1354,7 @@ function renderProducts(){
   const q=(document.getElementById('prodSearchInput')?.value||'').toLowerCase();
   const cat=document.getElementById('prodFilterCat')?.value||'';
   const list=products.filter(p=>{
-    const mq=!q||p.name.toLowerCase().includes(q)||(p.brand||'').toLowerCase().includes(q);
+    const mq=!q||p.name.toLowerCase().includes(q);
     const mc=!cat||p.category===cat;
     return mq&&mc;
   });
@@ -1368,12 +1368,18 @@ function renderProducts(){
 }
 
 function _renderProductView(p){
-  const photoHtml=p.photo?`
-    <div class="img-wrap" style="margin-bottom:10px">
-      <img src="${p.photo}" class="detail-photo" onclick="openLightbox(this.src)" style="cursor:pointer"/>
-      <button class="img-copy-btn" onclick="copyImg(document.querySelector('#productViewContent img').src)">📋 Copiar</button>
-    </div>`:'';
-  const meta=[p.brand?`🏷️ ${esc(p.brand)}`:'', p.quantity?`📦 ${esc(p.quantity)}`:'', p.category?esc(p.category):''].filter(Boolean).join(' &nbsp;·&nbsp; ');
+  const photos=(p.photos&&p.photos.length)?p.photos:(p.photo?[p.photo]:[]);
+  let photoHtml='';
+  if(photos.length===1){
+    photoHtml=`<div class="img-wrap" style="margin-bottom:10px">
+      <img src="${photos[0]}" class="detail-photo" onclick="openLightbox(this.src)" style="cursor:pointer"/>
+      <button class="img-copy-btn" onclick="copyImg('${photos[0]}')">📋 Copiar</button>
+    </div>`;
+  }else if(photos.length>1){
+    const cid='pv-'+p.id;
+    photoHtml=renderCarouselHtml(cid,photos,'')+`<div style="margin-bottom:10px"></div>`;
+  }
+  const meta=[p.category?esc(p.category):''].filter(Boolean).join(' &nbsp;·&nbsp; ');
   const notesBox=(p.notes||'').trim()?`
     <div class="sv-recipe-box" style="border-color:var(--border);background:#f5f3ee">
       <div class="sv-recipe-label" style="color:var(--muted)">📝 Notas</div>
@@ -1389,9 +1395,10 @@ function _renderProductView(p){
   </div>`;
 }
 
-function _renderProductEditForm({name='',emoji='🛒',category='Outro',brand='',quantity='',notes='',photo=''}={}){
+function _renderProductEditForm({name='',emoji='🛒',category='Outro',notes='',photos=[]}={}){
   const catOpts=['Lacticínios','Cereais','Proteínas','Vegetais','Frutas','Snacks','Bebidas','Higiene','Limpeza','Outro']
     .map(c=>`<option${c===category?' selected':''}>${c}</option>`).join('');
+  pProductPhotos=[...photos];
   document.getElementById('productEditContent').innerHTML=`
     <div class="form-group" style="display:flex;gap:8px">
       <div style="flex:0 0 64px">
@@ -1403,16 +1410,6 @@ function _renderProductEditForm({name='',emoji='🛒',category='Outro',brand='',
         <input id="pName" placeholder="ex: Iogurte Grego" value="${esc(name)}"/>
       </div>
     </div>
-    <div class="form-group" style="display:flex;gap:8px">
-      <div style="flex:1">
-        <label>Marca</label>
-        <input id="pBrand" placeholder="ex: Activia" value="${esc(brand)}"/>
-      </div>
-      <div style="flex:1">
-        <label>Quantidade</label>
-        <input id="pQuantity" placeholder="ex: 125g" value="${esc(quantity)}"/>
-      </div>
-    </div>
     <div class="form-group">
       <label>Categoria</label>
       <select id="pCategory">${catOpts}</select>
@@ -1422,33 +1419,40 @@ function _renderProductEditForm({name='',emoji='🛒',category='Outro',brand='',
       <textarea id="pNotes" class="ie-notes-area" rows="2" placeholder="Onde comprar, alternativas...">${esc(notes)}</textarea>
     </div>
     <div class="form-group">
-      <label>Foto (opcional)</label>
-      <label class="photo-upload-area" for="pPhotoInput" onclick="pasteImageTarget=applyProductPhoto" style="cursor:pointer">
-        <span id="pPhotoHint" ${photo?'style="display:none"':''}>📷 Clica, arrasta ou cola (Ctrl+V)</span>
-        <img id="pPhotoPreview" class="photo-preview" src="${photo||''}" style="${photo?'display:block':'display:none'}"/>
-      </label>
+      <label>Fotos (opcional)</label>
+      <div id="pPhotoGrid" class="carousel-editor-grid"></div>
       <input type="file" id="pPhotoInput" accept="image/*" style="display:none" onchange="onProductPhotoSelected(event)"/>
-      <input type="hidden" id="pPhoto" value="${photo||''}"/>
-      ${photo?`<button type="button" class="btn btn-ghost" style="margin-top:4px;font-size:12px" onclick="clearProductPhoto()">✕ Remover foto</button>`:''}
+      <div class="paste-hint">Ctrl+V para adicionar foto</div>
     </div>`;
-  pasteImageTarget=applyProductPhoto;
+  renderProductPhotoEditor();
+  pasteImageTarget=(dataUrl)=>{pProductPhotos.push(dataUrl);renderProductPhotoEditor();};
 }
 
-function applyProductPhoto(dataUrl){
-  document.getElementById('pPhoto').value=dataUrl;
-  document.getElementById('pPhotoPreview').src=dataUrl;
-  document.getElementById('pPhotoPreview').style.display='block';
-  const h=document.getElementById('pPhotoHint');if(h)h.style.display='none';
+function renderProductPhotoEditor(){
+  const grid=document.getElementById('pPhotoGrid');if(!grid)return;
+  grid.innerHTML=pProductPhotos.map((img,i)=>`
+    <div class="carousel-thumb">
+      <div class="img-wrap"><img src="${img}" onclick="replaceProductPhoto(${i})" title="Clica para trocar"/>
+      <button class="img-copy-btn" onclick="copyImg(pProductPhotos[${i}])">📋</button></div>
+      <button class="carousel-thumb-rm" onclick="removeProductPhoto(${i})">✕</button>
+    </div>`).join('')+
+    `<div class="carousel-thumb-add" onclick="addProductPhoto()" title="Adicionar foto">+</div>`;
 }
+let _prodPhotoReplaceIdx=-1;
+function addProductPhoto(){_prodPhotoReplaceIdx=-1;document.getElementById('pPhotoInput').value='';document.getElementById('pPhotoInput').click();}
+function replaceProductPhoto(i){_prodPhotoReplaceIdx=i;document.getElementById('pPhotoInput').value='';document.getElementById('pPhotoInput').click();}
+function removeProductPhoto(i){pProductPhotos.splice(i,1);renderProductPhotoEditor();}
 function onProductPhotoSelected(e){
   const file=e.target.files[0];if(!file)return;
-  compressImageFile(file).then(applyProductPhoto);
-}
-function clearProductPhoto(){
-  document.getElementById('pPhoto').value='';
-  document.getElementById('pPhotoInput').value='';
-  const pr=document.getElementById('pPhotoPreview');if(pr){pr.src='';pr.style.display='none';}
-  const h=document.getElementById('pPhotoHint');if(h)h.style.display='';
+  compressImageFile(file).then(dataUrl=>{
+    if(_prodPhotoReplaceIdx>=0&&_prodPhotoReplaceIdx<pProductPhotos.length){
+      pProductPhotos[_prodPhotoReplaceIdx]=dataUrl;
+    }else{
+      pProductPhotos.push(dataUrl);
+    }
+    _prodPhotoReplaceIdx=-1;
+    renderProductPhotoEditor();
+  });
 }
 
 function openProductModal(id){
@@ -1479,7 +1483,7 @@ function productSwitchToEdit(){
   document.getElementById('productViewMode').style.display='none';
   document.getElementById('productEditMode').style.display='';
   const db=document.getElementById('productDeleteBtn');if(db)db.style.display='none';
-  _renderProductEditForm({name:p.name,emoji:p.emoji||'🛒',category:p.category||'Outro',brand:p.brand||'',quantity:p.quantity||'',notes:p.notes||'',photo:p.photo||''});
+  _renderProductEditForm({name:p.name,emoji:p.emoji||'🛒',category:p.category||'Outro',notes:p.notes||'',photos:(p.photos&&p.photos.length)?p.photos:(p.photo?[p.photo]:[])});
 }
 
 function productCancelEdit(){
@@ -1495,12 +1499,10 @@ async function saveProduct(){
   if(btn){btn.disabled=true;btn.textContent='⏳ A guardar...';}
   try{
     const emoji=document.getElementById('pEmoji')?.value||'🛒';
-    const brand=document.getElementById('pBrand')?.value.trim()||null;
-    const quantity=document.getElementById('pQuantity')?.value.trim()||null;
     const category=document.getElementById('pCategory')?.value||'Outro';
     const notes=document.getElementById('pNotes')?.value.trim()||null;
-    const photo=document.getElementById('pPhoto')?.value||null;
-    const body={name,emoji,brand,quantity,category,notes,photo};
+    const photos=[...pProductPhotos];
+    const body={name,emoji,category,notes,photos};
     try{
       if(currentProductId){
         const u=await apiFetch(`/products/${currentProductId}`,{method:'PUT',body:JSON.stringify(body)});
