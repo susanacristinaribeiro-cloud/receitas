@@ -631,9 +631,53 @@ async function loadAll(){
     catch{appNotes=JSON.parse(localStorage.getItem('appNotes')||'[]');}
     // produtos
     try{products=await apiFetch('/products');}catch{products=JSON.parse(localStorage.getItem('products')||'[]');}
+    // sincroniza itens locais que não estão no servidor
+    await syncLocalToApi();
     saveLocal();setStatus('green');
   }catch{loadLocal();setStatus('red');}
   render();
+}
+
+async function syncLocalToApi(){
+  // Receitas
+  try{
+    const localRec=JSON.parse(localStorage.getItem('recipes')||'[]');
+    const apiIds=new Set(recipes.map(r=>r.id));
+    for(const r of localRec){
+      if(!r.id||apiIds.has(r.id))continue;
+      try{
+        const saved=await apiFetch('/recipes',{method:'POST',body:JSON.stringify({...r,photo:r.photo||null})});
+        if(saved){recipes.push(saved);}
+      }catch{}
+    }
+  }catch{}
+  // Notas
+  try{
+    const localNotes=JSON.parse(localStorage.getItem('appNotes')||'[]');
+    const apiIds=new Set(appNotes.map(n=>n.id));
+    for(const n of localNotes){
+      if(!n.id||apiIds.has(n.id))continue;
+      try{
+        const saved=await apiFetch('/notes',{method:'POST',body:JSON.stringify(n)});
+        if(saved){appNotes.push(saved);}
+      }catch{}
+    }
+  }catch{}
+  // Produtos
+  try{
+    const localProds=JSON.parse(localStorage.getItem('products')||'[]');
+    const apiIds=new Set(products.map(p=>p.id));
+    for(const p of localProds){
+      if(!p.id||apiIds.has(p.id))continue;
+      // migra formato antigo (photo singular → photos array)
+      const photos=p.photos?.length?p.photos:(p.photo?[p.photo]:[]);
+      try{
+        const body={name:p.name,emoji:p.emoji||'🛒',category:p.category||'Outro',notes:p.notes||null,photos};
+        const saved=await apiFetch('/products',{method:'POST',body:JSON.stringify(body)});
+        if(saved){products.push(saved);}
+      }catch{}
+    }
+  }catch{}
 }
 function loadLocal(){
   try{recipes=JSON.parse(localStorage.getItem('recipes')||'[]');}catch{recipes=[];}
