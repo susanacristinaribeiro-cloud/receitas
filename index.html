@@ -642,11 +642,22 @@ function loadLocal(){
   try{products=JSON.parse(localStorage.getItem('products')||'[]');}catch{products=[];}
 }
 function saveLocal(){
-  localStorage.setItem('recipes',JSON.stringify(recipes));
-  localStorage.setItem('refeicoes',JSON.stringify(refeicoes));
-  localStorage.setItem('categories',JSON.stringify(categories));
-  localStorage.setItem('appNotes',JSON.stringify(appNotes));
-  localStorage.setItem('products',JSON.stringify(products));
+  try{
+    localStorage.setItem('recipes',JSON.stringify(recipes));
+    localStorage.setItem('refeicoes',JSON.stringify(refeicoes));
+    localStorage.setItem('categories',JSON.stringify(categories));
+    localStorage.setItem('appNotes',JSON.stringify(appNotes));
+    localStorage.setItem('products',JSON.stringify(products));
+  }catch{
+    // quota exceeded — guarda sem fotos
+    try{
+      localStorage.setItem('recipes',JSON.stringify(recipes.map(r=>({...r,photo:null}))));
+      localStorage.setItem('refeicoes',JSON.stringify(Object.fromEntries(Object.entries(refeicoes).map(([k,v])=>[k,v.map(e=>({...e,photo:null}))]))));
+      localStorage.setItem('categories',JSON.stringify(categories));
+      localStorage.setItem('appNotes',JSON.stringify(appNotes));
+      localStorage.setItem('products',JSON.stringify(products.map(p=>({...p,photo:null}))));
+    }catch{}
+  }
 }
 function render(){renderRecipes();renderSlots();renderProducts();renderNotesList();populateCatFilter();populateCatDatalist();}
 
@@ -674,18 +685,45 @@ function exportDataJSON(){
 function importDataJSON(e){
   const file=e.target.files[0];if(!file)return;
   const reader=new FileReader();
-  reader.onload=ev=>{
+  reader.onload=async ev=>{
     try{
       const d=JSON.parse(ev.target.result);
+      // aplica em memória
       if(d.recipes)recipes=d.recipes;
       if(d.refeicoes)refeicoes=d.refeicoes;
       if(d.categories)categories=d.categories;
       if(d.notes)appNotes=d.notes;
       if(d.products)products=d.products;
-      saveLocal();render();
+      // guarda versão sem fotos no localStorage (evita quota exceeded)
+      try{
+        localStorage.setItem('refeicoes',JSON.stringify(
+          Object.fromEntries(Object.entries(refeicoes).map(([k,v])=>[k,v.map(x=>({...x,photo:null}))]))
+        ));
+        localStorage.setItem('categories',JSON.stringify(categories));
+        localStorage.setItem('appNotes',JSON.stringify(appNotes));
+        localStorage.setItem('products',JSON.stringify(products.map(p=>({...p,photo:null}))));
+        // receitas sem foto para caber
+        localStorage.setItem('recipes',JSON.stringify(recipes.map(r=>({...r,photo:null}))));
+      }catch{}
+      // render imediato — dados já em memória
+      render();
       const msg=document.getElementById('recoveryMsg');
-      if(msg){msg.textContent='✅ Dados importados com sucesso!';msg.style.display='';}
-    }catch(err){alert('Erro ao importar: '+err.message);}
+      if(msg){msg.textContent='✅ Dados restaurados em memória!';msg.style.display='';}
+      // sincroniza refeições com a API (sem fotos para caber no body)
+      if(getApiUrl()){
+        try{
+          for(const [slot,entries] of Object.entries(refeicoes)){
+            for(const entry of entries){
+              const ex=await apiFetch(`/refeicoes/${encodeURIComponent(slot)}`).catch(()=>[]);
+              if(!Array.isArray(ex)||!ex.find(x=>x.id===entry.id)){
+                await apiFetch(`/refeicoes/${encodeURIComponent(slot)}`,{method:'POST',body:JSON.stringify({...entry,photo:null})}).catch(()=>{});
+              }
+            }
+          }
+          if(msg)msg.textContent='✅ Refeições sincronizadas com o servidor!';
+        }catch{}
+      }
+    }catch(err){console.error(err);alert('Erro ao importar: '+err.message);}
   };
   reader.readAsText(file);
   e.target.value='';
