@@ -603,13 +603,23 @@ async function apiFetch(path,opts={},timeoutMs=30000){
 // ─── Load ─────────────────────────────────────────────────────────────────────
 async function loadAll(){
   if(!getApiUrl()){loadLocal();setStatus('red');render();return;}
+  // snapshot local antes de fetch — para proteger dados em caso de API vazia
+  const _localRef=JSON.parse(localStorage.getItem('refeicoes')||'{}');
+  const _localRec=JSON.parse(localStorage.getItem('recipes')||'[]');
   try{
     [recipes,refeicoes,categories]=await Promise.all([
       apiFetch('/recipes'),apiFetch('/refeicoes'),apiFetch('/categories')
     ]);
-    // notas: endpoint opcional — não bloqueia se o backend ainda não foi atualizado
+    // se API devolveu vazio mas localStorage tem dados, preserva dados locais
+    const refVazio=Object.keys(refeicoes).length===0;
+    const refLocal=Object.keys(_localRef).some(k=>(_localRef[k]||[]).length>0);
+    if(refVazio&&refLocal){refeicoes=_localRef;}
+    if(!recipes.length&&_localRec.length){recipes=_localRec;}
+    // notas
     try{appNotes=await apiFetch('/notes');}
     catch{appNotes=JSON.parse(localStorage.getItem('appNotes')||'[]');}
+    // produtos
+    try{products=await apiFetch('/products');}catch{products=JSON.parse(localStorage.getItem('products')||'[]');}
     saveLocal();setStatus('green');
   }catch{loadLocal();setStatus('red');}
   render();
