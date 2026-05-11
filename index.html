@@ -1416,12 +1416,7 @@ function renderProducts(){
 function _renderProductView(p){
   const photos=(p.photos&&p.photos.length)?p.photos:(p.photo?[p.photo]:[]);
   let photoHtml='';
-  if(photos.length===1){
-    photoHtml=`<div class="img-wrap" style="margin-bottom:10px">
-      <img src="${photos[0]}" class="detail-photo" onclick="openLightbox(this.src)" style="cursor:pointer"/>
-      <button class="img-copy-btn" onclick="copyImg('${photos[0]}')">📋 Copiar</button>
-    </div>`;
-  }else if(photos.length>1){
+  if(photos.length>0){
     const cid='pv-'+p.id;
     photoHtml=renderCarouselHtml(cid,photos,'')+`<div style="margin-bottom:10px"></div>`;
   }
