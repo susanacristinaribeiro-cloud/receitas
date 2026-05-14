@@ -138,6 +138,8 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
 .slot-item-row:hover{background:rgba(0,0,0,.04);}
 .slot-item-row-name{flex:1;font-size:13px;color:var(--text);line-height:1.4;}
 .slot-item-arrow{font-size:11px;color:var(--muted);flex-shrink:0;}
+.cert-badge{display:inline-flex;align-items:center;gap:2px;font-size:10px;font-weight:600;color:#fff;background:#2e7d32;border-radius:20px;padding:2px 7px;flex-shrink:0;line-height:1.4;letter-spacing:.2px;}
+.cert-badge-row{margin-left:auto;margin-right:4px;}
 .slot-add-row{display:flex;align-items:center;justify-content:center;padding:8px 4px;cursor:pointer;font-size:12px;color:var(--teal);gap:4px;border-top:1px dashed var(--border);margin-top:4px;}
 .slot-add-row:hover{opacity:.7;}
 .slot-empty-hint{font-size:12px;color:var(--muted);padding:8px 0;font-style:italic;}
@@ -442,6 +444,17 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
         <button type="button" class="btn btn-ghost" onclick="addNotesBlock('url')">+ URL</button>
       </div>
       <input type="file" id="notesPhotoInput" accept="image/*" style="display:none" onchange="onNotesPhotoSelected(event)"/>
+    </div>
+
+    <div class="form-group" style="background:#f1f8f1;border:1px solid #c8e6c9;border-radius:10px;padding:12px 14px">
+      <label style="color:#2e7d32;font-weight:600">✓ Certificação</label>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+        <input type="checkbox" id="fCertified" style="width:18px;height:18px;accent-color:#2e7d32;flex-shrink:0" onchange="document.getElementById('fCertifiedByRow').style.display=this.checked?'':'none'"/>
+        <label for="fCertified" style="font-size:13px;margin:0;cursor:pointer">Esta receita é certificada por um profissional</label>
+      </div>
+      <div id="fCertifiedByRow" style="margin-top:8px;display:none">
+        <input id="fCertifiedBy" placeholder="Nome do nutricionista / profissional" style="width:100%"/>
+      </div>
     </div>
 
     <div class="modal-footer">
@@ -806,6 +819,7 @@ function recipeCardHtml(r){return`
         ${r.servings?`<span>👥 ${r.servings}</span>`:''}
       </div>
     </div>
+    ${r.certified?`<span class="cert-badge cert-badge-row">✓ cert.</span>`:''}
     <span class="list-row-arrow">›</span>
   </div>`;}
 
@@ -846,7 +860,8 @@ function showDetail(id){
     ${currentRecipe.time?`<span class="badge teal">⏱ ${esc(currentRecipe.time)}</span>`:''}
     ${currentRecipe.servings?`<span class="badge green">👥 ${currentRecipe.servings} porções</span>`:''}
     ${currentRecipe.calories?`<span class="badge amber">🔥 ${currentRecipe.calories} kcal/porção</span>`:''}
-    <span class="badge" style="background:var(--bg)">${diffIcon(currentRecipe.difficulty)} ${esc(currentRecipe.difficulty||'')}</span>`;
+    <span class="badge" style="background:var(--bg)">${diffIcon(currentRecipe.difficulty)} ${esc(currentRecipe.difficulty||'')}</span>
+    ${currentRecipe.certified?`<span class="cert-badge" style="font-size:11px;padding:3px 9px">✓ Certificado${currentRecipe.certified_by?` por ${esc(currentRecipe.certified_by)}`:''}</span>`:''}`;
   document.getElementById('detailIngredients').textContent=currentRecipe.ingredients||'—';
   document.getElementById('detailPreparation').textContent=currentRecipe.preparation||'—';
   const ns=document.getElementById('detailNotesSection');
@@ -1088,6 +1103,10 @@ function openRecipeModal(r=null){
     document.getElementById('photoUploadLabel').textContent='Clica ou arrasta uma foto aqui';
   }
   loadNotesIntoEditor(r?r.notes:null);
+  const certified=r?!!r.certified:false;
+  document.getElementById('fCertified').checked=certified;
+  document.getElementById('fCertifiedByRow').style.display=certified?'':'none';
+  document.getElementById('fCertifiedBy').value=r?(r.certified_by||''):'';
   populateCatDatalist();
   pasteImageTarget=applyRecipePhoto;
   openModal('recipeOverlay');
@@ -1108,12 +1127,14 @@ async function saveRecipe(){
     const ta=el.querySelector('textarea');if(ta&&notesBlocks[i])notesBlocks[i].content=ta.value;
   });
   const notes=notesBlocks.length>0?notesBlocks:null;
+  const certified=document.getElementById('fCertified')?.checked||false;
+  const certified_by=certified?(document.getElementById('fCertifiedBy')?.value.trim()||null):null;
   const body={name,emoji:document.getElementById('fEmoji').value.trim()||'🍽️',
     category:cat,difficulty:document.getElementById('fDiff').value,
     time:document.getElementById('fTime').value.trim(),
     servings:parseInt(document.getElementById('fServings').value)||4,
     calories,ingredients:document.getElementById('fIngredients').value.trim(),
-    preparation:document.getElementById('fPrep').value.trim(),notes,photo};
+    preparation:document.getElementById('fPrep').value.trim(),notes,photo,certified,certified_by};
   const id=document.getElementById('editId').value;
   if(cat&&!categories.includes(cat))categories.push(cat);
   try{
@@ -1149,6 +1170,7 @@ function renderSlots(){
     const rows=entries.map(e=>`
       <div class="slot-item-row" onclick="openItemModal('${s.key}','${e.id}');event.stopPropagation()">
         <span class="slot-item-row-name">${esc(e.name)}</span>
+        ${e.certified?`<span class="cert-badge cert-badge-row">✓ cert.</span>`:''}
         <span class="slot-item-arrow">›</span>
       </div>`).join('');
     const empty=entries.length===0?`<div class="slot-empty-hint">${q?'Sem resultados':'Sem refeições'}</div>`:'';
@@ -1226,10 +1248,14 @@ function _renderItemView(e){
       <div class="sv-recipe-label" style="color:var(--muted)">📝 Notas</div>
       <div class="sv-ingr">${esc((e.notes||'').trim())}</div>
     </div>`:'';
+  const certHtml=e.certified?`
+    <div class="sv-recipe-box" style="border-color:#2e7d32;background:#f1f8f1">
+      <div class="sv-recipe-label" style="color:#2e7d32">✓ Certificado${e.certified_by?` por <strong>${esc(e.certified_by)}</strong>`:''}</div>
+    </div>`:'';
   return`<div class="sv-group">
     ${photoHtml}
     <div class="sv-item"><span class="sv-name">${esc(e.name)}</span></div>
-    ${ingrBox}${recipeBoxes}${notesBox}
+    ${certHtml}${ingrBox}${recipeBoxes}${notesBox}
   </div>`;
 }
 
@@ -1264,7 +1290,7 @@ function itemSwitchToEdit(){
   document.getElementById('itemViewMode').style.display='none';
   document.getElementById('itemEditMode').style.display='';
   const _db=document.getElementById('itemDeleteBtn');if(_db)_db.style.display='none';
-  _renderItemEditForm({name:e.name,recipe_ids:_entryRecipeIds(e),ingredients:e.ingredients||'',photo:e.photo||'',notes:e.notes||''});
+  _renderItemEditForm({name:e.name,recipe_ids:_entryRecipeIds(e),ingredients:e.ingredients||'',photo:e.photo||'',notes:e.notes||'',certified:!!e.certified,certified_by:e.certified_by||''});
 }
 
 function itemCancelEdit(){
@@ -1275,7 +1301,7 @@ function itemCancelEdit(){
   }else{closeModal('itemModal');}
 }
 
-function _renderItemEditForm({name,recipe_ids=[],ingredients,photo,notes=''}){
+function _renderItemEditForm({name,recipe_ids=[],ingredients,photo,notes='',certified=false,certified_by=''}){
   itemRecipeIds=[...recipe_ids];
   const recOpts=recipes.map(r=>`<option value="${r.id}">${r.emoji||'🍽️'} ${esc(r.name)}</option>`).join('');
   document.getElementById('itemEditContent').innerHTML=`
@@ -1310,6 +1336,16 @@ function _renderItemEditForm({name,recipe_ids=[],ingredients,photo,notes=''}){
       <input type="file" id="ieMealPhotoInput" accept="image/*" style="display:none" onchange="onMealPhotoSelected(event)"/>
       <input type="hidden" id="ieMealPhoto" value="${photo||''}"/>
       ${photo?`<button type="button" class="btn btn-ghost" style="margin-top:4px;font-size:12px" onclick="clearMealPhoto()">✕ Remover foto</button>`:''}
+    </div>
+    <div class="form-group" style="background:#f1f8f1;border:1px solid #c8e6c9;border-radius:10px;padding:12px 14px">
+      <label style="color:#2e7d32;font-weight:600">✓ Certificação</label>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+        <input type="checkbox" id="ieCertified" ${certified?'checked':''} style="width:18px;height:18px;accent-color:#2e7d32;flex-shrink:0" onchange="document.getElementById('ieCertifiedByRow').style.display=this.checked?'':'none'"/>
+        <label for="ieCertified" style="font-size:13px;margin:0;cursor:pointer">Esta refeição é certificada por um profissional</label>
+      </div>
+      <div id="ieCertifiedByRow" style="margin-top:8px;display:${certified?'':'none'}">
+        <input id="ieCertifiedBy" placeholder="Nome do nutricionista / profissional" value="${esc(certified_by)}" style="width:100%"/>
+      </div>
     </div>`;
   _renderRecipeChips();
   pasteImageTarget=applyMealPhoto;
@@ -1353,7 +1389,9 @@ async function saveItem(){
     const photo=document.getElementById('ieMealPhoto')?.value||null;
     const recipe_ids=(itemRecipeIds||[]).length?[...(itemRecipeIds||[])]:null;
     const recipe_id=(itemRecipeIds||[])[0]||null;
-    const body={name,recipe_id,recipe_ids,ingredients,photo,notes};
+    const certified=document.getElementById('ieCertified')?.checked||false;
+    const certified_by=certified?(document.getElementById('ieCertifiedBy')?.value.trim()||null):null;
+    const body={name,recipe_id,recipe_ids,ingredients,photo,notes,certified,certified_by};
     try{
       if(currentEntryId){
         const u=await apiFetch(`/refeicoes/${encodeURIComponent(slot)}/${currentEntryId}`,{method:'PUT',body:JSON.stringify(body)});
