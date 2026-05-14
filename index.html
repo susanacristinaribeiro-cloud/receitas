@@ -139,7 +139,7 @@ select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:var(
 .slot-item-row-name{flex:1;font-size:13px;color:var(--text);line-height:1.4;}
 .slot-item-arrow{font-size:11px;color:var(--muted);flex-shrink:0;}
 .cert-badge{display:inline-flex;align-items:center;gap:2px;font-size:10px;font-weight:600;color:#fff;background:#2e7d32;border-radius:20px;padding:2px 7px;flex-shrink:0;line-height:1.4;letter-spacing:.2px;}
-.cert-badge-row{margin-left:auto;margin-right:4px;}
+.cert-seal{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;background:#2e7d32;border-radius:50%;color:#fff;font-size:9px;flex-shrink:0;vertical-align:middle;box-shadow:0 0 0 1.5px #fff,0 0 0 3px #2e7d32;line-height:1;}
 .slot-add-row{display:flex;align-items:center;justify-content:center;padding:8px 4px;cursor:pointer;font-size:12px;color:var(--teal);gap:4px;border-top:1px dashed var(--border);margin-top:4px;}
 .slot-add-row:hover{opacity:.7;}
 .slot-empty-hint{font-size:12px;color:var(--muted);padding:8px 0;font-style:italic;}
@@ -819,7 +819,7 @@ function recipeCardHtml(r){return`
         ${r.time?`<span>⏱ ${esc(r.time)}</span>`:''}
         ${r.calories?`<span>🔥 ${r.calories} kcal</span>`:''}
         ${r.servings?`<span>👥 ${r.servings}</span>`:''}
-        ${r.certified?`<span style="color:#2e7d32;font-weight:600">✓ cert.</span>`:''}
+        ${r.certified?`<span class="cert-seal" title="Certificado">★</span>`:''}
       </div>
     </div>
     <span class="list-row-arrow">›</span>
@@ -1177,7 +1177,7 @@ function renderSlots(){
     const entries=q?raw.filter(e=>e.name.toLowerCase().includes(q)):raw;
     const rows=entries.map(e=>`
       <div class="slot-item-row" onclick="openItemModal('${s.key}','${e.id}');event.stopPropagation()">
-        <span class="slot-item-row-name">${esc(e.name)}${e.certified?` <span style="color:#2e7d32;font-size:11px;font-weight:600">✓</span>`:''}</span>
+        <span class="slot-item-row-name">${esc(e.name)}${e.certified?` <span class="cert-seal" title="Certificado" style="margin-left:4px">★</span>`:''}</span>
         <span class="slot-item-arrow">›</span>
       </div>`).join('');
     const empty=entries.length===0?`<div class="slot-empty-hint">${q?'Sem resultados':'Sem refeições'}</div>`:'';
